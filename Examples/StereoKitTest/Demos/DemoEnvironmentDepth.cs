@@ -70,6 +70,8 @@ class DemoEnvironmentDepth : ITest
 		// Place the helmet 1m in front of the user at head height
 		modelPose = new Pose(0, 0, -0.6f, Quat.LookDir(0, 0, 1));
 
+		Permission.Request(PermissionType.Scene);
+
 		if (!EnvironmentDepth.IsAvailable)
 		{
 			Log.Warn("Environment depth is not available on this runtime.");
