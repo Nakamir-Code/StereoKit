@@ -2697,6 +2697,7 @@ SK_MakeFlag(anchor_caps_);
 
 SK_API anchor_t              anchor_find                     (const char* asset_id_utf8);
 SK_API anchor_t              anchor_create                   (pose_t pose);
+SK_API anchor_t              anchor_create_from_tracked      (uint64_t entity_id);
 SK_API void                  anchor_set_id                   (      anchor_t anchor, const char* asset_id_utf8);
 SK_API const char*           anchor_get_id                   (const anchor_t anchor);
 SK_API void                  anchor_addref                   (      anchor_t anchor);

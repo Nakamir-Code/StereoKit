@@ -752,6 +752,7 @@ namespace StereoKit
 
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       anchor_find([MarshalAs(UnmanagedType.LPUTF8Str)] string asset_id_utf8);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       anchor_create(Pose pose);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       anchor_create_from_tracked(ulong entity_id);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         anchor_set_id(IntPtr anchor, [MarshalAs(UnmanagedType.LPUTF8Str)] string asset_id_utf8);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       anchor_get_id(IntPtr anchor);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         anchor_addref(IntPtr anchor);

@@ -137,6 +137,15 @@ anchor_t anchor_create(pose_t pose) {
 
 ///////////////////////////////////////////
 
+anchor_t anchor_create_from_tracked(uint64_t entity_id) {
+	switch (anch_sys) {
+	case anchor_system_openxr_ext: return xr_ext_spatial_anchors_from_tracked(entity_id);
+	default: return nullptr;
+	}
+}
+
+///////////////////////////////////////////
+
 anchor_t anchor_create_manual(anchor_type_id system_id, pose_t pose, const char *name_utf8, void* data) {
 	anchor_t result = (anchor_t)assets_allocate(asset_type_anchor);
 	result->source_system = system_id;

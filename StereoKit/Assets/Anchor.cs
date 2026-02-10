@@ -118,6 +118,22 @@ namespace StereoKit {
 			return anchor == IntPtr.Zero ? null : new Anchor(anchor);
 		}
 
+		/// <summary>Creates an Anchor asset from a tracked world anchor
+		/// entity. Use this to wrap an <see cref="AnchorInfo"/> discovered via
+		/// <see cref="World.StartTracking(TrackingType)"/> as a managed
+		/// Anchor asset. If an Anchor already exists for this entity, the
+		/// existing one is returned. Returns null if the entity is not
+		/// found.</summary>
+		/// <param name="info">A tracked anchor from the World tracking
+		/// system.</param>
+		/// <returns>An Anchor asset wrapping the tracked entity, or null if
+		/// not found.</returns>
+		public static Anchor FromTracked(AnchorInfo info)
+		{
+			IntPtr anchor = NativeAPI.anchor_create_from_tracked(info.id);
+			return anchor == IntPtr.Zero ? null : new Anchor(anchor);
+		}
+
 		/// <summary>This describes the anchoring capabilities of the current
 		/// XR anchoring backend. Some systems like a HoloLens can create
 		/// Anchors that provide stability, and can persist across multiple

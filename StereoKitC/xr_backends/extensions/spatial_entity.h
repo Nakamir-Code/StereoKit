@@ -13,12 +13,13 @@ namespace sk {
 void xr_ext_spatial_entity_register(void);
 
 // Backend interface for anchor_t integration
-bool         xr_ext_spatial_anchors_available   ();
-anchor_t     xr_ext_spatial_anchors_create      (pose_t pose, const char* name_utf8);
-void         xr_ext_spatial_anchors_destroy     (anchor_t anchor);
-void         xr_ext_spatial_anchors_clear_stored();
-bool32_t     xr_ext_spatial_anchors_persist     (anchor_t anchor, bool32_t persist);
-anchor_caps_ xr_ext_spatial_anchors_capabilities();
-void         xr_ext_spatial_anchors_step        ();
+bool         xr_ext_spatial_anchors_available    ();
+anchor_t     xr_ext_spatial_anchors_create       (pose_t pose, const char* name_utf8);
+anchor_t     xr_ext_spatial_anchors_from_tracked (uint64_t entity_id);
+void         xr_ext_spatial_anchors_destroy      (anchor_t anchor);
+void         xr_ext_spatial_anchors_clear_stored ();
+bool32_t     xr_ext_spatial_anchors_persist      (anchor_t anchor, bool32_t persist);
+anchor_caps_ xr_ext_spatial_anchors_capabilities ();
+void         xr_ext_spatial_anchors_step         ();
 
 } // namespace sk

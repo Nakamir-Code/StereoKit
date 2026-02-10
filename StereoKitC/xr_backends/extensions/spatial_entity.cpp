@@ -217,8 +217,8 @@ static world_surface_type_ xr_alignment_to_plane_type(XrSpatialPlaneAlignmentEXT
 	switch (alignment) {
 	case XR_SPATIAL_PLANE_ALIGNMENT_HORIZONTAL_DOWNWARD_EXT: return world_surface_type_horizontal_down;
 	case XR_SPATIAL_PLANE_ALIGNMENT_HORIZONTAL_UPWARD_EXT:   return world_surface_type_horizontal_up;
-	case XR_SPATIAL_PLANE_ALIGNMENT_VERTICAL_EXT:        return world_surface_type_vertical;
-	default:                                             return world_surface_type_unknown;
+	case XR_SPATIAL_PLANE_ALIGNMENT_VERTICAL_EXT:            return world_surface_type_vertical;
+	default:                                                 return world_surface_type_unknown;
 	}
 }
 
@@ -250,7 +250,7 @@ static XrSpatialMarkerArucoDictEXT xr_aruco_dict_to_xr(aruco_dict_ dict) {
 	case aruco_dict_aruco7x7_100:  return XR_SPATIAL_MARKER_ARUCO_DICT_7X7_100_EXT;
 	case aruco_dict_aruco7x7_250:  return XR_SPATIAL_MARKER_ARUCO_DICT_7X7_250_EXT;
 	case aruco_dict_aruco7x7_1000: return XR_SPATIAL_MARKER_ARUCO_DICT_7X7_1000_EXT;
-	default:                          return XR_SPATIAL_MARKER_ARUCO_DICT_4X4_50_EXT;
+	default:                       return XR_SPATIAL_MARKER_ARUCO_DICT_4X4_50_EXT;
 	}
 }
 
@@ -260,7 +260,7 @@ static XrSpatialMarkerAprilTagDictEXT xr_apriltag_dict_to_xr(apriltag_dict_ dict
 	case apriltag_dict_tag25h9:  return XR_SPATIAL_MARKER_APRIL_TAG_DICT_25H9_EXT;
 	case apriltag_dict_tag36h10: return XR_SPATIAL_MARKER_APRIL_TAG_DICT_36H10_EXT;
 	case apriltag_dict_tag36h11: return XR_SPATIAL_MARKER_APRIL_TAG_DICT_36H11_EXT;
-	default:                          return XR_SPATIAL_MARKER_APRIL_TAG_DICT_36H11_EXT;
+	default:                     return XR_SPATIAL_MARKER_APRIL_TAG_DICT_36H11_EXT;
 	}
 }
 
@@ -868,15 +868,15 @@ static void xr_spatial_plane_process_snapshot(XrSpatialSnapshotEXT snapshot) {
 		return;
 
 	uint32_t count = query_result.entityIdCountOutput;
-	XrSpatialEntityIdEXT*              entity_ids    = sk_malloc_t(XrSpatialEntityIdEXT, count);
-	XrSpatialEntityTrackingStateEXT*   entity_states = sk_malloc_t(XrSpatialEntityTrackingStateEXT, count);
-	XrSpatialPlaneAlignmentEXT*    align_data    = sk_malloc_t(XrSpatialPlaneAlignmentEXT, count);
-	XrSpatialBounded2DDataEXT*         bounds_data   = sk_malloc_t(XrSpatialBounded2DDataEXT, count);
-	XrBoxf*                            bounds3d_data = sk_malloc_t(XrBoxf, count);
-	XrSpatialPlaneSemanticLabelEXT* label_data   = sk_malloc_t(XrSpatialPlaneSemanticLabelEXT, count);
-	XrSpatialPolygon2DDataEXT*         polygon_data  = sk_malloc_t(XrSpatialPolygon2DDataEXT, count);
+	XrSpatialEntityIdEXT*            entity_ids    = sk_malloc_t(XrSpatialEntityIdEXT, count);
+	XrSpatialEntityTrackingStateEXT* entity_states = sk_malloc_t(XrSpatialEntityTrackingStateEXT, count);
+	XrSpatialPlaneAlignmentEXT*      align_data    = sk_malloc_t(XrSpatialPlaneAlignmentEXT, count);
+	XrSpatialBounded2DDataEXT*       bounds_data   = sk_malloc_t(XrSpatialBounded2DDataEXT, count);
+	XrBoxf*                          bounds3d_data = sk_malloc_t(XrBoxf, count);
+	XrSpatialPlaneSemanticLabelEXT*  label_data    = sk_malloc_t(XrSpatialPlaneSemanticLabelEXT, count);
+	XrSpatialPolygon2DDataEXT*       polygon_data  = sk_malloc_t(XrSpatialPolygon2DDataEXT, count);
 	XrSpatialMeshDataEXT*            mesh_data     = sk_malloc_t(XrSpatialMeshDataEXT, count);
-	XrSpatialEntityIdEXT*              parent_ids    = sk_malloc_t(XrSpatialEntityIdEXT, count);
+	XrSpatialEntityIdEXT*            parent_ids    = sk_malloc_t(XrSpatialEntityIdEXT, count);
 
 	query_result.entityIds                = entity_ids;
 	query_result.entityIdCapacityInput    = count;
@@ -1875,6 +1875,44 @@ anchor_t xr_ext_spatial_anchors_create(pose_t pose, const char* name_utf8) {
 
 		anchor_mark_dirty(bridge->anchor);
 	}, (void*)(intptr_t)bridge_idx);
+
+	return anchor;
+}
+
+anchor_t xr_ext_spatial_anchors_from_tracked(uint64_t entity_id) {
+	if (entity_id == 0)
+		return nullptr;
+
+	for (int32_t i = 0; i < anchor_bridges.count; i++) {
+		if (anchor_bridges[i].entity_id == entity_id && anchor_bridges[i].anchor) {
+			anchor_addref(anchor_bridges[i].anchor);
+			return anchor_bridges[i].anchor;
+		}
+	}
+
+	int32_t tracked_idx = -1;
+	for (int32_t i = 0; i < local.anchors.count; i++) {
+		if (local.anchors[i].entity_id == entity_id) {
+			tracked_idx = i;
+			break;
+		}
+	}
+	if (tracked_idx < 0)
+		return nullptr;
+
+	const xr_tracked_anchor_t& tracked = local.anchors[tracked_idx];
+
+	// Use uuid as name if available, otherwise generate one
+	const char* name  = tracked.uuid[0] != '\0' ? tracked.uuid : nullptr;
+	anchor_t anchor   = anchor_create_manual(anchor_system_openxr_ext, tracked.pose, name, (void*)(uintptr_t)entity_id);
+	anchor->tracked   = tracking_state_to_button(tracked.tracking_state);
+	anchor->persisted = tracked.is_persistent;
+
+	xr_anchor_bridge_t bridge = {};
+	bridge.anchor         = anchor;
+	bridge.entity_id      = entity_id;
+	bridge.pending_create = false;
+	anchor_bridges.add(bridge);
 
 	return anchor;
 }
