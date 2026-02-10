@@ -1546,6 +1546,100 @@ namespace StereoKit
 		Timer,
 	}
 
+	/// <summary>Type of marker being tracked.</summary>
+	public enum WorldMarkerType {
+		/// <summary>QR Code marker.</summary>
+		QrCode,
+		/// <summary>ArUco fiducial marker.</summary>
+		Aruco,
+		/// <summary>AprilTag fiducial marker.</summary>
+		AprilTag,
+		/// <summary>Micro QR Code marker.</summary>
+		MicroQrCode,
+	}
+
+	/// <summary>Bitmask of marker types for tracking. Multiple types can be combined
+	/// with the | operator.</summary>
+	[Flags]
+	public enum WorldMarkerTypes {
+		None         = 0,
+		Qr           = 1 << 0,
+		MicroQr      = 1 << 1,
+		Aruco        = 1 << 2,
+		AprilTag     = 1 << 3,
+		All          = 0xF,
+	}
+
+	/// <summary>ArUco dictionary variants for marker detection.</summary>
+	public enum ArucoDict {
+		Aruco4x450   = 0,
+		Aruco4x4100  = 1,
+		Aruco4x4250  = 2,
+		Aruco4x41000 = 3,
+		Aruco5x550   = 4,
+		Aruco5x5100  = 5,
+		Aruco5x5250  = 6,
+		Aruco5x51000 = 7,
+		Aruco6x650   = 8,
+		Aruco6x6100  = 9,
+		Aruco6x6250  = 10,
+		Aruco6x61000 = 11,
+		Aruco7x750   = 12,
+		Aruco7x7100  = 13,
+		Aruco7x7250  = 14,
+		Aruco7x71000 = 15,
+	}
+
+	/// <summary>AprilTag dictionary variants for marker detection.</summary>
+	public enum ApriltagDict {
+		Tag16h5      = 0,
+		Tag25h9      = 1,
+		Tag36h10     = 2,
+		Tag36h11     = 3,
+	}
+
+	/// <summary>Alignment of a detected surface.</summary>
+	public enum WorldSurfaceType {
+		Unknown      = 0,
+		HorizontalDown = 1,
+		HorizontalUp = 2,
+		Vertical     = 3,
+	}
+
+	/// <summary>Semantic label describing what a detected surface represents.</summary>
+	public enum WorldSurfaceLabel {
+		Unknown      = 0,
+		Floor        = 1,
+		Wall         = 2,
+		Ceiling      = 3,
+		Table        = 4,
+		Uncategorized = 5,
+	}
+
+	/// <summary>Tracking state for world-tracked entities.</summary>
+	public enum WorldTrackingState {
+		/// <summary>No longer tracked, should be considered lost.</summary>
+		Stopped      = 0,
+		/// <summary>Tracking is paused, pose data may be stale.</summary>
+		Paused       = 1,
+		/// <summary>Actively tracked with valid pose data.</summary>
+		Tracking     = 2,
+	}
+
+	/// <summary>Capabilities of the world tracking system.</summary>
+	[Flags]
+	public enum WorldTrackingCaps {
+		None         = 0,
+		Anchor       = 1 << 0,
+		MarkerQr     = 1 << 1,
+		MarkerMicroQr = 1 << 2,
+		MarkerAruco  = 1 << 3,
+		MarkerApril  = 1 << 4,
+		Surface      = 1 << 5,
+		Mesh         = 1 << 6,
+		Persistence  = 1 << 7,
+	}
+
 	/// <summary>This describes what technology is being used to power StereoKit's
 	/// XR backend.</summary>
 	public enum BackendXRType {

@@ -48,7 +48,7 @@ set(FORCE_COLORED_OUTPUT            OFF CACHE BOOL "Always produce ANSI-colored 
 ## Configuration settings                ##
 ###########################################
 
-# Default build configuration to Release 
+# Default build configuration to Release
 if (NOT EXISTS ${CMAKE_BINARY_DIR}/CMakeCache.txt)
     if (NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
@@ -467,6 +467,8 @@ set(SK_SRC_XR_EXTS
   StereoKitC/xr_backends/extensions/eye_interaction.cpp
   StereoKitC/xr_backends/extensions/fb_colorspace.h
   StereoKitC/xr_backends/extensions/fb_colorspace.cpp
+  StereoKitC/xr_backends/extensions/future.h
+  StereoKitC/xr_backends/extensions/future.cpp
   StereoKitC/xr_backends/extensions/vulkan_enable.h
   StereoKitC/xr_backends/extensions/vulkan_enable.cpp
   StereoKitC/xr_backends/extensions/hand_mesh.h
@@ -489,6 +491,8 @@ set(SK_SRC_XR_EXTS
   StereoKitC/xr_backends/extensions/overlay.cpp
   StereoKitC/xr_backends/extensions/oculus_audio.h
   StereoKitC/xr_backends/extensions/oculus_audio.cpp
+  StereoKitC/xr_backends/extensions/spatial_entity.h
+  StereoKitC/xr_backends/extensions/spatial_entity.cpp
   StereoKitC/xr_backends/extensions/msft_anchors.h
   StereoKitC/xr_backends/extensions/msft_anchors.cpp
   StereoKitC/xr_backends/extensions/msft_bridge.h

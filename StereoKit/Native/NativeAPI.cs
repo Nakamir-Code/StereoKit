@@ -806,6 +806,62 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern OriginMode   world_get_origin_mode();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern Pose         world_get_origin_offset();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_set_origin_offset(Pose offset);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_tracking_is_available();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern WorldTrackingCaps world_tracking_get_capabilities();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_tracking_has_marker_type(WorldMarkerType type);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_marker_start(WorldMarkerTypes types, [MarshalAs(UnmanagedType.FunctionPtr)] OnMarkerEvent on_marker_event, IntPtr context);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_marker_start_ex(in MarkerConfig config, [MarshalAs(UnmanagedType.FunctionPtr)] OnMarkerEvent on_marker_event, IntPtr context);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_marker_stop();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_marker_is_active();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern WorldMarkerTypes world_marker_get_active_types();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          world_marker_get_count();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          world_marker_get_count_of_type(WorldMarkerType type);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_marker_get_at(int index, out MarkerInfo out_marker);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_marker_find([MarshalAs(UnmanagedType.LPUTF8Str)] string data_utf8, out MarkerInfo out_marker);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_marker_find_by_id(ulong id, out MarkerInfo out_marker);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_marker_refresh();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_surface_start([MarshalAs(UnmanagedType.FunctionPtr)] OnSurfaceEvent on_surface_event, IntPtr context);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_surface_stop();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_surface_is_active();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          world_surface_get_count();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_surface_get_at(int index, out SurfaceInfo out_surface);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_surface_find_by_id(ulong id, out SurfaceInfo out_surface);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_surface_refresh();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_start([MarshalAs(UnmanagedType.FunctionPtr)] OnAnchorEvent on_anchor_event, IntPtr context);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_anchor_stop();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_is_active();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          world_anchor_get_count();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_get_at(int index, out AnchorInfo out_anchor);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_find_by_id(ulong id, out AnchorInfo out_anchor);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_find_by_uuid([MarshalAs(UnmanagedType.LPUTF8Str)] string uuid, out AnchorInfo out_anchor);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_anchor_refresh();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_create(Pose pose, [MarshalAs(UnmanagedType.FunctionPtr)] OnAnchorCreated on_anchor_created, IntPtr context);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_remove(ulong anchor_id);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_persistence_is_available();
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_persist(ulong anchor_id, [MarshalAs(UnmanagedType.FunctionPtr)] OnPersistCompleted on_persist_completed, IntPtr context);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_anchor_unpersist(ulong anchor_id, [MarshalAs(UnmanagedType.FunctionPtr)] OnUnpersistCompleted on_unpersist_completed, IntPtr context);
 
 		///////////////////////////////////////////
 

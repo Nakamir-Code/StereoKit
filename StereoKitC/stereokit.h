@@ -2760,6 +2760,227 @@ SK_API void                  world_set_origin_offset         (pose_t offset);
 
 ///////////////////////////////////////////
 
+/*Type of marker being tracked.*/
+typedef enum world_marker_type_ {
+	/*QR Code marker.*/
+	world_marker_type_qr_code,
+	/*ArUco fiducial marker.*/
+	world_marker_type_aruco,
+	/*AprilTag fiducial marker.*/
+	world_marker_type_april_tag,
+	/*Micro QR Code marker.*/
+	world_marker_type_micro_qr_code,
+} world_marker_type_;
+
+/*Bitmask of marker types for tracking. Multiple types can be combined
+  with the | operator.*/
+typedef enum world_marker_types_ {
+	world_marker_types_none      = 0,
+	world_marker_types_qr        = 1 << 0,
+	world_marker_types_micro_qr  = 1 << 1,
+	world_marker_types_aruco     = 1 << 2,
+	world_marker_types_april_tag = 1 << 3,
+	world_marker_types_all       = 0xF,
+} world_marker_types_;
+SK_MakeFlag(world_marker_types_);
+
+/*ArUco dictionary variants for marker detection.*/
+typedef enum aruco_dict_ {
+	aruco_dict_aruco4x4_50   = 0,
+	aruco_dict_aruco4x4_100  = 1,
+	aruco_dict_aruco4x4_250  = 2,
+	aruco_dict_aruco4x4_1000 = 3,
+	aruco_dict_aruco5x5_50   = 4,
+	aruco_dict_aruco5x5_100  = 5,
+	aruco_dict_aruco5x5_250  = 6,
+	aruco_dict_aruco5x5_1000 = 7,
+	aruco_dict_aruco6x6_50   = 8,
+	aruco_dict_aruco6x6_100  = 9,
+	aruco_dict_aruco6x6_250  = 10,
+	aruco_dict_aruco6x6_1000 = 11,
+	aruco_dict_aruco7x7_50   = 12,
+	aruco_dict_aruco7x7_100  = 13,
+	aruco_dict_aruco7x7_250  = 14,
+	aruco_dict_aruco7x7_1000 = 15,
+} aruco_dict_;
+
+/*AprilTag dictionary variants for marker detection.*/
+typedef enum apriltag_dict_ {
+	apriltag_dict_tag16h5  = 0,
+	apriltag_dict_tag25h9  = 1,
+	apriltag_dict_tag36h10 = 2,
+	apriltag_dict_tag36h11 = 3,
+} apriltag_dict_;
+
+/*Configuration for marker tracking with dictionary selection.*/
+typedef struct world_marker_config_t {
+	/*Which marker types to track (bitmask).*/
+	world_marker_types_ types;
+	/*ArUco dictionary to use when types includes aruco.*/
+	aruco_dict_         aruco_dict;
+	/*AprilTag dictionary to use when types includes apriltag.*/
+	apriltag_dict_      apriltag_dict;
+} world_marker_config_t;
+
+/*Alignment of a detected surface.*/
+typedef enum world_surface_type_ {
+	world_surface_type_unknown         = 0,
+	world_surface_type_horizontal_down = 1,
+	world_surface_type_horizontal_up   = 2,
+	world_surface_type_vertical        = 3,
+} world_surface_type_;
+
+/*Semantic label describing what a detected surface represents.*/
+typedef enum world_surface_label_ {
+	world_surface_label_unknown       = 0,
+	world_surface_label_floor         = 1,
+	world_surface_label_wall          = 2,
+	world_surface_label_ceiling       = 3,
+	world_surface_label_table         = 4,
+	world_surface_label_uncategorized = 5,
+} world_surface_label_;
+
+/*Tracking state for world-tracked entities.*/
+typedef enum world_tracking_state_ {
+	/*No longer tracked, should be considered lost.*/
+	world_tracking_state_stopped  = 0,
+	/*Tracking is paused, pose data may be stale.*/
+	world_tracking_state_paused   = 1,
+	/*Actively tracked with valid pose data.*/
+	world_tracking_state_tracking = 2,
+} world_tracking_state_;
+
+/*Capabilities of the world tracking system.*/
+typedef enum world_tracking_caps_ {
+	world_tracking_caps_none             = 0,
+	world_tracking_caps_anchor           = 1 << 0,
+	world_tracking_caps_marker_qr        = 1 << 1,
+	world_tracking_caps_marker_micro_qr  = 1 << 2,
+	world_tracking_caps_marker_aruco     = 1 << 3,
+	world_tracking_caps_marker_april     = 1 << 4,
+	world_tracking_caps_surface          = 1 << 5,
+	world_tracking_caps_mesh             = 1 << 6,
+	world_tracking_caps_persistence      = 1 << 7,
+} world_tracking_caps_;
+SK_MakeFlag(world_tracking_caps_);
+
+/*Information about a detected marker.*/
+typedef struct world_marker_t {
+	/*Pose in world space. Z- points out of the marker surface.*/
+	pose_t                pose;
+	/*Size of the marker in meters (width, height).*/
+	vec2                  size;
+	world_marker_type_    type;
+	world_tracking_state_ tracking_state;
+	/*Stable identifier for tracking across frames.*/
+	uint64_t              id;
+	/*Parent entity ID, 0 if none.*/
+	uint64_t              parent_id;
+	/*Decoded data (QR text/URL, ArUco ID, etc). Valid until the next
+	  world_marker_* call.*/
+	const char*           data;
+} world_marker_t;
+
+/*Information about a detected surface.*/
+typedef struct world_surface_t {
+	/*Pose of the surface center in world space. Y+ is the surface normal.*/
+	pose_t                pose;
+	/*2D bounds in meters (width, height).*/
+	vec2                  bounds;
+	/*3D bounding box dimensions, zero if unavailable.*/
+	vec3                  bounds3d;
+	world_surface_type_   alignment;
+	world_surface_label_  label;
+	world_tracking_state_ tracking_state;
+	uint64_t              id;
+	/*Parent entity ID, 0 if none.*/
+	uint64_t              parent_id;
+	/*2D polygon boundary in surface-local space, null if unavailable.*/
+	const vec2*           polygon;
+	int32_t               polygon_count;
+	/*2D triangulated mesh in surface-local space, null if unavailable.*/
+	const vec2*           mesh_vertices;
+	int32_t               mesh_vertex_count;
+	const uint32_t*       mesh_indices;
+	int32_t               mesh_index_count;
+} world_surface_t;
+
+SK_API bool32_t              world_tracking_is_available    (void);
+SK_API world_tracking_caps_  world_tracking_get_capabilities(void);
+SK_API bool32_t              world_tracking_has_marker_type (world_marker_type_ type);
+
+/*Start tracking markers. Multiple types can be combined with |.*/
+SK_API bool32_t              world_marker_start             (world_marker_types_ types, void (*on_marker_event)(void* context, const world_marker_t* marker), void* context);
+/*Start tracking markers with explicit dictionary configuration.*/
+SK_API bool32_t              world_marker_start_ex          (const world_marker_config_t* config, void (*on_marker_event)(void* context, const world_marker_t* marker), void* context);
+SK_API void                  world_marker_stop              (void);
+SK_API bool32_t              world_marker_is_active         (void);
+SK_API world_marker_types_   world_marker_get_active_types  (void);
+SK_API int32_t               world_marker_get_count         (void);
+SK_API int32_t               world_marker_get_count_of_type (world_marker_type_ type);
+SK_API bool32_t              world_marker_get_at            (int32_t index, world_marker_t* out_marker);
+SK_API bool32_t              world_marker_find              (const char* data_utf8, world_marker_t* out_marker);
+SK_API bool32_t              world_marker_find_by_id        (uint64_t id, world_marker_t* out_marker);
+/*Force a marker data refresh without waiting for discovery events.*/
+SK_API void                  world_marker_refresh           (void);
+
+/*Start tracking surfaces. The callback fires on detection/update.*/
+SK_API bool32_t              world_surface_start            (void (*on_surface_event)(void* context, const world_surface_t* surface), void* context);
+SK_API void                  world_surface_stop             (void);
+SK_API bool32_t              world_surface_is_active        (void);
+SK_API int32_t               world_surface_get_count        (void);
+SK_API bool32_t              world_surface_get_at           (int32_t index, world_surface_t* out_surface);
+SK_API bool32_t              world_surface_find_by_id       (uint64_t id, world_surface_t* out_surface);
+/*Force a surface data refresh without waiting for discovery events.*/
+SK_API void                  world_surface_refresh          (void);
+
+/*Information about a tracked spatial anchor with rich metadata.*/
+typedef struct world_anchor_t {
+	pose_t                pose;
+	/*3D bounding box dimensions, zero if unavailable.*/
+	vec3                  bounds3d;
+	world_tracking_state_ tracking_state;
+	/*Stable identifier for tracking across frames.*/
+	uint64_t              id;
+	/*Parent entity ID, 0 if none.*/
+	uint64_t              parent_id;
+	bool32_t              is_persistent;
+	/*Persistence UUID string, null if not persistent. Valid until the next
+	  world_anchor_* call.*/
+	const char*           uuid;
+	/*3D mesh vertices associated with this anchor, null if unavailable.
+	  Valid until the next world_anchor_* call.*/
+	const vec3*           mesh_vertices;
+	int32_t               mesh_vertex_count;
+	const uint32_t*       mesh_indices;
+	int32_t               mesh_index_count;
+} world_anchor_t;
+
+/*Start tracking anchors. Discovers existing and newly created spatial
+  anchors, including persistent ones from previous sessions.*/
+SK_API bool32_t              world_anchor_start             (void (*on_anchor_event)(void* context, const world_anchor_t* anchor), void* context);
+SK_API void                  world_anchor_stop              (void);
+SK_API bool32_t              world_anchor_is_active         (void);
+SK_API int32_t               world_anchor_get_count         (void);
+SK_API bool32_t              world_anchor_get_at            (int32_t index, world_anchor_t* out_anchor);
+SK_API bool32_t              world_anchor_find_by_id        (uint64_t id, world_anchor_t* out_anchor);
+SK_API bool32_t              world_anchor_find_by_uuid      (const char* uuid, world_anchor_t* out_anchor);
+/*Force an anchor data refresh without waiting for discovery events.*/
+SK_API void                  world_anchor_refresh           (void);
+
+/*Create a new spatial anchor at the given pose. The callback fires once
+  the anchor is created with its assigned ID.*/
+SK_API bool32_t              world_anchor_create            (pose_t pose, void (*on_anchor_created)(void* context, const world_anchor_t* anchor), void* context);
+SK_API bool32_t              world_anchor_remove            (uint64_t anchor_id);
+
+SK_API bool32_t              world_persistence_is_available (void);
+/*Persist an anchor for cross-session retrieval. The callback fires with
+  the result and UUID on success.*/
+SK_API bool32_t              world_anchor_persist           (uint64_t anchor_id, void (*on_persist_completed)(void* context, bool32_t success, const char* uuid), void* context);
+SK_API bool32_t              world_anchor_unpersist         (uint64_t anchor_id, void (*on_unpersist_completed)(void* context, bool32_t success), void* context);
+
+///////////////////////////////////////////
+
 /*This describes what technology is being used to power StereoKit's
   XR backend.*/
 typedef enum backend_xr_type_ {

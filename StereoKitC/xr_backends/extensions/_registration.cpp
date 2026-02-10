@@ -16,6 +16,7 @@
 #include "ext_render_model.h"
 #include "eye_interaction.h"
 #include "fb_colorspace.h"
+#include "future.h"
 #include "vulkan_enable.h"
 #include "hand_tracking.h"
 #include "hand_mesh.h"
@@ -26,6 +27,7 @@
 #include "android_thread.h"
 #include "overlay.h"
 #include "time.h"
+#include "spatial_entity.h"
 #include "oculus_audio.h"
 #include "msft_anchors.h"
 #include "msft_bridge.h"
@@ -47,6 +49,7 @@ bool ext_registration() {
 
 	xr_ext_debug_utils_register();
 	xr_ext_time_register();
+	xr_ext_future_register();
 	xr_ext_android_create_instance_register();
 	xr_ext_android_thread_register();
 	xr_ext_vulkan_enable_register();
@@ -62,6 +65,7 @@ bool ext_registration() {
 	xr_ext_msft_bridge_register();
 	xr_ext_interaction_render_model_register();
 	xr_ext_render_model_register();
+	xr_ext_spatial_entity_register();
 
 	// Input extensions all must go before the oxri/input system
 	xr_ext_palm_pose_register                    ();

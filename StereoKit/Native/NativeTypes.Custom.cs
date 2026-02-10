@@ -569,4 +569,149 @@ namespace StereoKit
 		[Obsolete("Use Pivot instead")]
 		public static implicit operator Pivot(TextAlign a) => (Pivot)a;
 	}
+
+	/// <summary>Identifies a category of world tracking to start or stop.
+	/// </summary>
+	public enum TrackingType
+	{
+		/// <summary>Fiducial and visual markers (QR, ArUco, AprilTag).
+		/// </summary>
+		Markers,
+		/// <summary>Planar surfaces detected in the environment.</summary>
+		Surfaces,
+		/// <summary>Spatial anchors tracked in the environment.</summary>
+		Anchors,
+	}
+
+	/// <summary>Marker interface for types returned by the world tracking
+	/// system via <see cref="World.GetTracked{T}"/>.</summary>
+	public interface ITracked { }
+
+	/// <summary>Information about a detected marker in world space.</summary>
+	[StructLayout(LayoutKind.Sequential)]
+	public struct MarkerInfo : ITracked
+	{
+		/// <summary>Pose of the marker in world space. Z- points out of the
+		/// marker surface.</summary>
+		public Pose             pose;
+		/// <summary>Physical size of the marker in meters (width, height).
+		/// </summary>
+		public Vec2             size;
+		/// <summary>What kind of marker is this?</summary>
+		public WorldMarkerType  type;
+		/// <summary>Current tracking state of this marker.</summary>
+		public WorldTrackingState trackingState;
+		/// <summary>Stable identifier for tracking across frames.</summary>
+		public ulong            id;
+		/// <summary>Parent entity ID, 0 if none.</summary>
+		public ulong            parentId;
+		private IntPtr          _data;
+
+		/// <summary>Decoded marker data (QR text/URL, ArUco ID string, etc).
+		/// </summary>
+		public string Data => Marshal.PtrToStringAnsi(_data);
+	}
+
+	/// <summary>Information about a detected surface in world space.</summary>
+	[StructLayout(LayoutKind.Sequential)]
+	public struct SurfaceInfo : ITracked
+	{
+		/// <summary>Pose of the surface center in world space. Y+ is the
+		/// surface normal.</summary>
+		public Pose              pose;
+		/// <summary>2D bounds in meters (width, height).</summary>
+		public Vec2              bounds;
+		/// <summary>3D bounding box dimensions, zero if unavailable.</summary>
+		public Vec3              bounds3d;
+		/// <summary>Surface alignment (horizontal, vertical, etc).</summary>
+		public WorldSurfaceType  alignment;
+		/// <summary>Semantic label for the surface (floor, wall, etc).
+		/// </summary>
+		public WorldSurfaceLabel label;
+		/// <summary>Current tracking state of this surface.</summary>
+		public WorldTrackingState trackingState;
+		/// <summary>Stable identifier for tracking across frames.</summary>
+		public ulong             id;
+		/// <summary>Parent entity ID, 0 if none.</summary>
+		public ulong             parentId;
+		private IntPtr           _polygon;
+		/// <summary>Number of polygon boundary vertices.</summary>
+		public int               polygonCount;
+		private IntPtr           _meshVertices;
+		/// <summary>Number of mesh vertices.</summary>
+		public int               meshVertexCount;
+		private IntPtr           _meshIndices;
+		/// <summary>Number of mesh indices.</summary>
+		public int               meshIndexCount;
+	}
+
+	/// <summary>Configuration for marker tracking with dictionary selection.
+	/// </summary>
+	[StructLayout(LayoutKind.Sequential)]
+	public struct MarkerConfig
+	{
+		/// <summary>Which marker types to track (bitmask).</summary>
+		public WorldMarkerTypes types;
+		/// <summary>ArUco dictionary to use when types includes ArUco.
+		/// </summary>
+		public ArucoDict        arucoDict;
+		/// <summary>AprilTag dictionary to use when types includes AprilTag.
+		/// </summary>
+		public ApriltagDict     apriltagDict;
+	}
+
+	/// <summary>Callback for marker tracking events.</summary>
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	internal delegate void OnMarkerEvent(IntPtr context, in MarkerInfo marker);
+
+	/// <summary>Callback for surface tracking events.</summary>
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	internal delegate void OnSurfaceEvent(IntPtr context, in SurfaceInfo surface);
+
+	/// <summary>Information about a tracked spatial anchor with rich
+	/// metadata including persistence UUID, 3D mesh, and bounds.</summary>
+	[StructLayout(LayoutKind.Sequential)]
+	public struct AnchorInfo : ITracked
+	{
+		/// <summary>Pose of the anchor in world space.</summary>
+		public Pose              pose;
+		/// <summary>3D bounding box dimensions, zero if unavailable.</summary>
+		public Vec3              bounds3d;
+		/// <summary>Current tracking state of this anchor.</summary>
+		public WorldTrackingState trackingState;
+		/// <summary>Stable identifier for tracking across frames.</summary>
+		public ulong             id;
+		/// <summary>Parent entity ID, 0 if none.</summary>
+		public ulong             parentId;
+		/// <summary>Is this anchor persisted across sessions?</summary>
+		[MarshalAs(UnmanagedType.Bool)]
+		public bool              isPersistent;
+		private IntPtr           _uuid;
+		private IntPtr           _meshVertices;
+		/// <summary>Number of 3D mesh vertices.</summary>
+		public int               meshVertexCount;
+		private IntPtr           _meshIndices;
+		/// <summary>Number of mesh indices.</summary>
+		public int               meshIndexCount;
+
+		/// <summary>Persistence UUID string, or null if not persistent.
+		/// </summary>
+		public string Uuid => Marshal.PtrToStringAnsi(_uuid);
+	}
+
+	/// <summary>Callback for anchor tracking events.</summary>
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	internal delegate void OnAnchorEvent(IntPtr context, in AnchorInfo anchor);
+
+	/// <summary>Callback for anchor creation.</summary>
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	internal delegate void OnAnchorCreated(IntPtr context, in AnchorInfo anchor);
+
+	/// <summary>Callback for persist completion.</summary>
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	internal delegate void OnPersistCompleted(IntPtr context, [MarshalAs(UnmanagedType.Bool)] bool success, IntPtr uuid);
+
+	/// <summary>Callback for unpersist completion.</summary>
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	internal delegate void OnUnpersistCompleted(IntPtr context, [MarshalAs(UnmanagedType.Bool)] bool success);
 }

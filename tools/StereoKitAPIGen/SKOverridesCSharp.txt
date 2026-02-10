@@ -141,3 +141,15 @@ picker_callback PickerCallback
 
 # Public API delegates that need XML documentation (hand-written in NativeTypes.cs)
 @noimpl AppStep AppShutdown AssetOnLoadCallback AudioGenerator InputEventCallback
+
+# World tracking types with pointer fields (hand-written in NativeTypes.Custom.cs)
+@noimpl world_marker_t world_surface_t world_marker_config_t world_anchor_t
+
+# World tracking struct name overrides (match hand-written C# names)
+world_marker_t MarkerInfo
+world_surface_t SurfaceInfo
+world_marker_config_t MarkerConfig
+world_anchor_t AnchorInfo
+
+# World tracking callback delegates (hand-written in NativeTypes.Custom.cs)
+@noimpl OnMarkerEvent OnSurfaceEvent OnAnchorEvent OnAnchorCreated OnPersistCompleted OnUnpersistCompleted
