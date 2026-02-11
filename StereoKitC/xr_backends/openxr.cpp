@@ -757,7 +757,7 @@ bool openxr_poll_events() {
 					// be available as soon as the session begins, for apps that
 					// are listening to sk_app_focus changing to determine if FoV
 					// is ready.
-					openxr_views_update_fov();
+					openxr_views_update_fov(changed->time);
 				}
 			} break;
 			case XR_SESSION_STATE_SYNCHRONIZED: break; // We're connected to a session, but not visible to users yet.
