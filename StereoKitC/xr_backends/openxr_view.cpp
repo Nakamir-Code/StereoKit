@@ -1034,7 +1034,7 @@ void openxr_display_swapchain_release(device_display_t *display) {
 
 ///////////////////////////////////////////
 
-void openxr_views_update_fov() {
+void openxr_views_update_fov(XrTime time) {
 	if (xr_display_primary_idx == -1) return;
 	device_display_t* disp = &xr_displays[xr_display_primary_idx];
 
@@ -1043,7 +1043,7 @@ void openxr_views_update_fov() {
 	XrViewState      view_state  = { XR_TYPE_VIEW_STATE };
 	XrViewLocateInfo locate_info = { XR_TYPE_VIEW_LOCATE_INFO };
 	locate_info.viewConfigurationType = disp->type;
-	locate_info.displayTime           = xr_time;
+	locate_info.displayTime           = time;
 	locate_info.space                 = xr_head_space; // We don't need app space here, and app space may not be valid yet
 	if (XR_FAILED(xrLocateViews(xr_session, &locate_info, &view_state, disp->view_cap, &view_count, disp->view_xr)))
 		return;

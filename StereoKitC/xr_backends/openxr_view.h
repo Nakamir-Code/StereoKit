@@ -16,7 +16,7 @@ namespace sk {
 
 bool openxr_views_create    ();
 void openxr_views_destroy   ();
-void openxr_views_update_fov();
+void openxr_views_update_fov(XrTime time);
 
 void     xr_extension_structs_clear();
 bool32_t xr_set_blend              (display_blend_ blend);
