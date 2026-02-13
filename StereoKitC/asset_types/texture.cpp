@@ -906,10 +906,12 @@ tex_t tex_get_zbuffer(tex_t texture) {
 ///////////////////////////////////////////
 
 void tex_set_surface(tex_t texture, void *native_surface, tex_type_ type, int64_t native_fmt, int32_t width, int32_t height, int32_t surface_count, int32_t multisample, bool32_t owned) {
-	texture->owned = owned;
-
-	if (texture->owned && skr_tex_is_valid(&texture->gpu_tex))
+	// Always destroy old GPU resources when valid - skr_tex_destroy handles
+	// is_external internally to decide whether to destroy the VkImage.
+	if (skr_tex_is_valid(&texture->gpu_tex))
 		skr_tex_destroy(&texture->gpu_tex);
+
+	texture->owned = owned;
 
 	texture->type   = type;
 	texture->format = tex_get_tex_format(native_fmt);
@@ -924,7 +926,7 @@ void tex_set_surface(tex_t texture, void *native_surface, tex_type_ type, int64_
 		info.array_layers  = surface_count;
 		info.owns_image    = owned;
 
-		skr_tex_create_external(info, &texture->gpu_tex);
+		skr_tex_create_external_vk(info, &texture->gpu_tex);
 	} else {
 		texture->gpu_tex = {};
 	}
@@ -1005,7 +1007,11 @@ void tex_destroy(tex_t tex) {
 	assets_on_load_remove(&tex->header, nullptr);
 
 	sk_free(tex->light_info);
-	if (tex->owned && skr_tex_is_valid(&tex->gpu_tex)) {
+	// Always destroy GPU resources when valid - skr_tex_destroy checks is_external
+	// internally to decide whether to destroy the VkImage (external images like
+	// OpenXR swapchains won't have their VkImage destroyed, but ImageViews and
+	// Framebuffers that we created will still be cleaned up).
+	if (skr_tex_is_valid(&tex->gpu_tex)) {
 		skr_tex_destroy(&tex->gpu_tex);
 	}
 	if (tex->depth_buffer != nullptr) tex_release(tex->depth_buffer);

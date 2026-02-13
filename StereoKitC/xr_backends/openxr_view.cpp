@@ -350,6 +350,12 @@ bool32_t xr_view_type_valid(XrViewConfigurationType type) {
 ///////////////////////////////////////////
 
 void openxr_views_destroy() {
+	// Wait for all GPU work to complete before destroying swapchain resources.
+	// The textures have ImageViews/Framebuffers that may still be referenced
+	// by in-flight command buffers, and OpenXR swapchain images can't be
+	// destroyed while in use.
+	vkDeviceWaitIdle(skr_get_vk_device());
+
 	for (int32_t i = 0; i < xr_displays.count; i++) {
 		device_display_delete(&xr_displays[i]);
 	}
@@ -506,10 +512,12 @@ bool openxr_display_swapchain_update(device_display_t *display) {
 	// Update or set the native textures
 	for (uint32_t back = 0; back < sc_color->backbuffer_count; back++) {
 		// Update our textures with the new swapchain display surfaces (VkImage for Vulkan)
+		// OpenXR swapchain images are owned by the runtime, not the application - they get
+		// destroyed when xrDestroySwapchain is called, so we pass owned=false here.
 		void *native_surface_col   = (void*)sc_color->backbuffers[back].image;
 		void *native_surface_depth = (void*)sc_depth->backbuffers[back].image;
-		tex_set_surface(sc_color->textures[back], native_surface_col,   tex_type_rendertarget, xr_preferred_color_format, sc_color->width, sc_color->height, array_count, 1);
-		tex_set_surface(sc_depth->textures[back], native_surface_depth, tex_type_depth,        xr_preferred_depth_format, sc_depth->width, sc_depth->height, array_count, 1);
+		tex_set_surface(sc_color->textures[back], native_surface_col,   tex_type_rendertarget, xr_preferred_color_format, sc_color->width, sc_color->height, array_count, 1, false);
+		tex_set_surface(sc_depth->textures[back], native_surface_depth, tex_type_depth,        xr_preferred_depth_format, sc_depth->width, sc_depth->height, array_count, 1, false);
 		tex_set_zbuffer(sc_color->textures[back], sc_depth->textures[back]);
 	}
 
