@@ -926,7 +926,7 @@ void tex_set_surface(tex_t texture, void *native_surface, tex_type_ type, int64_
 		info.array_layers  = surface_count;
 		info.owns_image    = owned;
 
-		skr_tex_create_external_vk(info, &texture->gpu_tex);
+		skr_tex_create_external(info, &texture->gpu_tex);
 	} else {
 		texture->gpu_tex = {};
 	}
