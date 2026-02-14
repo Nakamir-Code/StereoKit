@@ -5,7 +5,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace StereoKit.Framework
 {
@@ -31,9 +30,9 @@ namespace StereoKit.Framework
 		List<LogItem> items = new List<LogItem>();
 		static float  logIndex = 0;
 
-		DiagGraph fpsGraph        = new DiagGraph(5f, 20f);
-		DiagGraph managedRamGraph = new DiagGraph(0,0);
-		ulong lastMemPoll = 0;
+		DiagGraph fpsGraph     = new DiagGraph(0, 0);
+		DiagGraph cpuPerfGraph = new DiagGraph(0, 0);
+		DiagGraph gpuPerfGraph = new DiagGraph(0, 0);
 
 		public LogWindow()
 		{
@@ -121,23 +120,27 @@ namespace StereoKit.Framework
 
 		void DrawGraphs()
 		{
-			ulong memPollIdx = (ulong)(Time.Total * 2);
-			if (lastMemPoll != memPollIdx)
-			{
-				lastMemPoll = memPollIdx;
-				long managedMem = GC.GetTotalMemory(false);
-				managedRamGraph.Add(managedMem / (1024.0f * 1024.0f));
-			}
+			float frameMs = 1000.0f / Device.DisplayRefreshRate;
+			fpsGraph.min      = frameMs * 0.5f;
+			fpsGraph.max      = frameMs * 1.5f;
+			cpuPerfGraph.max  = frameMs * 1.5f;
+			gpuPerfGraph.max  = frameMs * 1.5f;
 
-			float halfWidth = (UI.LayoutRemaining.x - UI.Settings.gutter*2) / 2.0f;
-			Vec2  graphSize  = V.XY(halfWidth, UI.LineHeight);
+			float thirdWidth = (UI.LayoutRemaining.x - UI.Settings.gutter*2) / 3.0f;
+			Vec2  graphSize  = V.XY(thirdWidth, UI.LineHeight);
 
 			fpsGraph.Add(Time.Stepf*1000);
 			fpsGraph.Draw(styleGraph, "Frame (ms)", UI.LayoutAt + V.XYZ(0,0,-0.004f), graphSize);
 			UI.LayoutReserve(graphSize);
 			UI.SameLine();
 
-			managedRamGraph.Draw(styleGraph, "Managed (mb)", UI.LayoutAt + V.XYZ(0,0,-0.004f), graphSize);
+			cpuPerfGraph.Add(Time.PerfCPUus / 1000.0f);
+			cpuPerfGraph.Draw(styleGraph, "CPU (ms)", UI.LayoutAt + V.XYZ(0,0,-0.004f), graphSize);
+			UI.LayoutReserve(graphSize);
+			UI.SameLine();
+
+			gpuPerfGraph.Add(Time.PerfGPUus / 1000.0f);
+			gpuPerfGraph.Draw(styleGraph, "GPU (ms)", UI.LayoutAt + V.XYZ(0,0,-0.004f), graphSize);
 			UI.LayoutReserve(graphSize);
 			UI.SameLine();
 		}
@@ -147,18 +150,16 @@ namespace StereoKit.Framework
 			float[]     buffer;
 			LinePoint[] points;
 			int         curr;
-			float       min;
-			float       max;
-			bool        calcMin;
-			bool        calcMax;
+			public float min;
+			public float max;
+			float       avg;
 
 			public DiagGraph(float min, float max)
 			{
 				this.min = min;
 				this.max = max;
-				calcMin = min == 0;
-				calcMax = max == 0;
 				curr = 0;
+				avg  = 0;
 
 				buffer = new float[100];
 				points = new LinePoint[100];
@@ -173,6 +174,7 @@ namespace StereoKit.Framework
 			{
 				buffer[curr] = value;
 				curr = (curr + 1) % buffer.Length;
+				avg = avg + (value - avg) * 0.1f;
 			}
 
 			public void Draw(TextStyle style, string label, Vec3 at, Vec2 size)
@@ -181,28 +183,22 @@ namespace StereoKit.Framework
 				float       textScale  = size.y * 0.15f;
 				size.x -= labelWidth;
 
-				float frameMax = float.MinValue;
-				float frameMin = float.MaxValue;
-				float step     = 1f/(points.Length-1);
+				float step = 1f/(points.Length-1);
 				for (int i = 0; i < points.Length; i++)
 				{
 					float pct = i * step;
 					int   idx = (curr + i) % points.Length;
 					float val = Math.Clamp((buffer[idx] - min) / (max - min), 0.0f, 1.0f);
 					points[i].pt = new Vec3(at.x - pct*size.x, at.y-size.y + val*size.y, at.z);
-					if (buffer[idx] > frameMax) frameMax = buffer[idx];
-					if (buffer[idx] < frameMin) frameMin = buffer[idx];
 				}
 				Lines.Add(points);
 
+				string display = $"{label} {avg:F3}";
 				Text.Add(((int)max).ToString(), Matrix.TS(at.x-size.x, at.y,        at.z, textScale), V.XY(labelWidth*textScale, 1), TextFit.Overflow, style, Pivot.TopLeft,    Align.TopLeft);
 				Text.Add(((int)min).ToString(), Matrix.TS(at.x-size.x, at.y-size.y, at.z, textScale), V.XY(labelWidth*textScale, 1), TextFit.Overflow, style, Pivot.BottomLeft, Align.BottomLeft);
-				Text.Add(label,                 Matrix.TS(at.x,        at.y,        at.z, textScale),                                                  style, Pivot.TopLeft,    Align.TopLeft);
-				Lines.Add(at+V.XY0(-Text.SizeLayout(label, style).x*textScale - 0.002f, 0), at + V.XY0(-size.x, 0), new Color32(255,255,255,20), 0.001f);
+				Text.Add(display,               Matrix.TS(at.x,        at.y,        at.z, textScale),                                                  style, Pivot.TopLeft,    Align.TopLeft);
+				Lines.Add(at+V.XY0(-Text.SizeLayout(display, style).x*textScale - 0.002f, 0), at + V.XY0(-size.x, 0), new Color32(255,255,255,20), 0.001f);
 				Lines.Add(at+V.XY0(0, -size.y), at + V.XY0(-size.x, -size.y), new Color32(255, 255, 255, 20), 0.001f);
-
-				if (calcMin) min = frameMin;
-				if (calcMax) max = frameMax;
 			}
 		}
 	}

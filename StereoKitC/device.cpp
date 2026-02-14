@@ -16,6 +16,8 @@ device_data_t device_data = {};
 
 void device_data_init(device_data_t* data) {
 	*data = {};
+	// TODO: get actual refresh rate from sk_app when available
+	data->display_refresh_rate = 90.0f;
 }
 
 ///////////////////////////////////////////
