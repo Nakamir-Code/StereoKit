@@ -48,6 +48,10 @@
 		/// <summary>The reported name of the GPU, this will differ between D3D
 		/// and GL.</summary>
 		public static string GPU => NativeHelper.FromUtf8(NativeAPI.device_get_gpu());
+		/// <summary>The refresh rate of the display in Hz, derived from
+		/// OpenXR's predictedDisplayPeriod. Returns 0 if not available.
+		/// </summary>
+		public static float DisplayRefreshRate => NativeAPI.device_display_get_refresh_rate();
 
 		/// <summary>Does the device we're on have eye tracking support present
 		/// for input purposes? This is _not_ an indicator that the user has

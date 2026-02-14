@@ -793,6 +793,8 @@ bool openxr_render_frame() {
 
 	// Timing also needs some work, may be best as some sort of anchor system
 	xr_time = frame_state.predictedDisplayTime;
+	if (frame_state.predictedDisplayPeriod > 0)
+		device_data.display_refresh_rate = 1e9f / (float)frame_state.predictedDisplayPeriod;
 
 	// Execute any code that's dependent on the predicted time, such as
 	// updating the location of controller models. This often includes drawing,

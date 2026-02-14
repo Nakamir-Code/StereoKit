@@ -866,6 +866,8 @@ SK_API double        time_step             (void);
 SK_API void          time_scale            (double scale);
 SK_API void          time_set_time         (double total_seconds, double frame_elapsed_seconds sk_default(0));
 SK_API uint64_t      time_frame            (void);
+SK_API uint64_t      time_perf_cpu_us      (void);
+SK_API uint64_t      time_perf_gpu_us      (void);
 
 ///////////////////////////////////////////
 
