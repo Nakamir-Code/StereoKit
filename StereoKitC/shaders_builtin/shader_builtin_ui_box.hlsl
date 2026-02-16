@@ -50,7 +50,7 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 	return o;
 }
 float4 ps(psIn input) : SV_TARGET {
-	float  glow = pow(1 - saturate(sk_finger_distance(input.world.xyz) / 0.12), 10);
+	half   glow = sk_finger_glow(input.world.xyz);
 	
 	float  border_grow = glow * border_size_grow + border_size;
 	float2 border_pos  = (0.5-abs(input.uv)) * input.scale;

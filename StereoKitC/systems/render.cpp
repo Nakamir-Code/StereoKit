@@ -52,7 +52,7 @@ struct render_global_buffer_t {
 	XMMATRIX proj[2];
 	XMMATRIX proj_inv[2];
 	XMMATRIX viewproj[2];
-	vec4     lighting[9];
+	vec4     lighting[7];
 	vec4     camera_pos[2];
 	vec4     camera_dir[2];
 	vec4     fingertip[2];
@@ -766,7 +766,7 @@ void render_draw_queue(render_list_t list, const matrix *views, const matrix *pr
 	}
 
 	// Copy in the other global shader variables
-	memcpy(local.global_buffer.lighting, lighting_get_lighting(), sizeof(vec4) * 9);
+	memcpy(local.global_buffer.lighting, lighting_get_lighting(), sizeof(vec4) * 7);
 	local.global_buffer.time       = time_totalf();
 	local.global_buffer.view_count = view_count;
 	local.global_buffer.eye_offset = eye_offset;

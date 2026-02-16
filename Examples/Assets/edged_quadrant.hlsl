@@ -55,7 +55,7 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 }
 
 float4 ps(psIn input) : SV_TARGET {
-	float  glow = sk_finger_glow(input.world.xyz, input.normal);
+	float  glow = sk_finger_glow(input.world.xyz);
 
 	float  edge = saturate((input.light_edge.a - 0.15) / fwidth(input.light_edge.a));
 
