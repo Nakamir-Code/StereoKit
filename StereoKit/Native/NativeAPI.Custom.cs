@@ -8,6 +8,9 @@ namespace StereoKit
 {
 	internal static partial class NativeAPI
 	{
+		static NativeAPI() => NativeLib.Load();
+
+
 		// Generated signature uses IntPtr for opt/nullable, these provide typed versions
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)]
 		public static extern Bounds bounds_grow_to_fit_box(Bounds bounds, Bounds box, in Matrix opt_box_transform);

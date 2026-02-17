@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework> <!--Update the PDB URL in StereoKit.targets if changing-->
+		<ImplicitUsings>disable</ImplicitUsings>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<OutputPath>../bin/</OutputPath>
 		<DocumentationFile>../bin/StereoKit.xml</DocumentationFile>

@@ -88,12 +88,6 @@ namespace StereoKit
 					AndroidActivity = constructor.Invoke(new object[] { settings.androidActivity, 0 }); ;
 			}
 
-			if (!NativeLib.Load()) {
-				global::System.Diagnostics.Debug.WriteLine("[SK error] Failed to load StereoKitC!");
-				Console.WriteLine                         ("[SK error] Failed to load StereoKitC!");
-				return false;
-			}
-
 			IsInitialized = InitializeCall(settings);
 			AndroidActivity = null;
 			return IsInitialized;
@@ -114,18 +108,11 @@ namespace StereoKit
 		public static bool Initialize(string projectName = null, string assetsFolder = null)
 			=> Initialize(new SKSettings{ appName = projectName, assetsFolder = assetsFolder });
 
-		/// <summary>If you need to call StereoKit code before calling
-		/// SK.Initialize, you may need to explicitly load the library first.
-		/// This can be useful for setting up a few things, but should
-		/// probably be a pretty rare case.</summary>
-		public static void PreLoadLibrary()
-		{
-			if (!NativeLib.Load())
-			{
-				global::System.Diagnostics.Debug.WriteLine("[SK error] Failed to load StereoKitC!");
-				Console.WriteLine("[SK error] Failed to load StereoKitC!");
-			}
-		}
+		/// <summary>No longer necessary! The native library resolver is now
+		/// registered automatically when any StereoKit native function is
+		/// first called.</summary>
+		[Obsolete("No longer necessary, native library loading is now automatic.")]
+		public static void PreLoadLibrary() { }
 
 		/// <summary>Android only. This is for telling StereoKit about the
 		/// active Android window surface. In particular, Xamarin's
