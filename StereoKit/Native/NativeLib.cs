@@ -32,9 +32,8 @@ namespace StereoKit
 				return 0;
 
 			// The default resolver handles runtimes/{rid}/native/ automatically
-			//if (NativeLibrary.TryLoad(libraryName, assembly, searchPath, out nint handle))
-			//	return handle;
-			nint handle = 0;
+			if (NativeLibrary.TryLoad(libraryName, assembly, searchPath, out nint handle))
+				return handle;
 
 			// Fallback: try platform-specific paths from the app base directory
 			string arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
