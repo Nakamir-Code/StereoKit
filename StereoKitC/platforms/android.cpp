@@ -23,6 +23,8 @@
 #include <android/font.h>
 
 #include <dlfcn.h>
+#include <unwind.h>
+#include <cxxabi.h>
 #include <sk_app.h>
 
 namespace sk {
@@ -159,12 +161,6 @@ void android_set_window_xam(void *window) {
 
 ///////////////////////////////////////////
 
-ANativeWindow* android_get_window() {
-	return local.window;
-}
-
-///////////////////////////////////////////
-
 bool android_read_asset(const char* asset_name, void** out_data, size_t* out_size) {
 	// See: http://www.50ply.com/blog/2013/01/19/loading-compressed-android-assets-with-file-pointer/
 	AAsset *asset = AAssetManager_open(local.asset_manager, asset_name, AASSET_MODE_BUFFER);
@@ -232,10 +228,6 @@ font_t platform_default_font() {
 }
 
 ///////////////////////////////////////////
-
-#include <unwind.h>
-#include <dlfcn.h>
-#include <cxxabi.h>
 
 struct android_backtrace_state {
 	void **current;
