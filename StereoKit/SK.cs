@@ -135,9 +135,6 @@ namespace StereoKit
 				catch { settings.appName = "StereoKit App"; }
 			}
 
-			// DllImport finds the function at the beginning of the function
-			// call, so this needs to be in a separate function from
-			// NativeLib.LoadDll
 			bool result = NativeAPI.sk_init(settings);
 			// Get the "resolved" settings from StereoKit, so we pick up some
 			// of the final defaults or calculated settings.

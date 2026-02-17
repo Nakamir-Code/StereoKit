@@ -2,13 +2,43 @@
 // Some signatures just aren't worth trying to build into the binding system!
 
 using System;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace StereoKit
 {
 	internal static partial class NativeAPI
 	{
-		static NativeAPI() => NativeLib.Load();
+		static NativeAPI()
+		{
+			NativeLibrary.SetDllImportResolver(
+				typeof(NativeAPI).Assembly,
+				ResolveStereoKit);
+		}
+
+		static nint ResolveStereoKit(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+		{
+			if (libraryName != dll)
+				return 0;
+
+			// The default resolver handles runtimes/{rid}/native/ automatically
+			if (NativeLibrary.TryLoad(libraryName, assembly, searchPath, out nint handle))
+				return handle;
+
+			// Fallback: try platform-specific paths from the app base directory
+			string arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
+			string basePath = AppContext.BaseDirectory;
+
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+				NativeLibrary.TryLoad(Path.Combine(basePath, "runtimes", $"win-{arch}", "native", "StereoKitC.dll"), out handle);
+			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+				NativeLibrary.TryLoad(Path.Combine(basePath, "runtimes", $"linux-{arch}", "native", "libStereoKitC.so"), out handle);
+			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				NativeLibrary.TryLoad(Path.Combine(basePath, "runtimes", $"osx-{arch}", "native", "libStereoKitC.dylib"), out handle);
+
+			return handle;
+		}
 
 
 		// Generated signature uses IntPtr for opt/nullable, these provide typed versions
