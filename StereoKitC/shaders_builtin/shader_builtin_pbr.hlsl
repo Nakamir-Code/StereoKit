@@ -28,19 +28,19 @@ Texture2D    occlusion   : register(t3);
 SamplerState occlusion_s : register(s3);
 
 struct vsIn {
-	float4 pos     : SV_Position;
-	float3 norm    : NORMAL0;
-	float2 uv      : TEXCOORD0;
-	float4 color   : COLOR0;
+	float4 pos       : SV_Position;
+	float3 norm      : NORMAL0;
+	float2 uv        : TEXCOORD0;
+	float4 color     : COLOR0;
 };
 struct psIn {
-	float4 pos     : SV_POSITION;
-	float3 normal  : NORMAL0;
-	float2 uv      : TEXCOORD0;
-	float4 color   : COLOR0;
-	float3 irradiance: COLOR1;
-	float3 world   : TEXCOORD1;
-	float3 view_dir: TEXCOORD2;
+	float4 pos       : SV_POSITION;
+	half3  normal    : NORMAL0;
+	float2 uv        : TEXCOORD0;
+	half4  color     : COLOR0;
+	half3  irradiance: COLOR1;
+	float3 world     : TEXCOORD1;
+	float3 view_dir  : TEXCOORD2;
 	uint view_id : SV_RenderTargetArrayIndex;
 };
 
@@ -49,10 +49,11 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 	o.view_id = id % sk_view_count;
 	id        = id / sk_view_count;
 
-	o.world = mul(float4(input.pos.xyz, 1), sk_inst[id].world).xyz;
-	o.pos   = mul(float4(o.world,  1), sk_viewproj[o.view_id]);
+	float3x3 world3x3 = (float3x3)sk_inst[id].world;
+	o.world = mul(input.pos.xyz, world3x3) + sk_inst[id].world[3].xyz;
+	o.pos   = mul(float4(o.world, 1), sk_viewproj[o.view_id]);
 
-	o.normal     = normalize(mul(float4(input.norm, 0), sk_inst[id].world).xyz);
+	o.normal     = normalize(mul(input.norm, world3x3));
 	o.uv         = (input.uv * tex_trans.zw) + tex_trans.xy;
 	o.color      = input.color * sk_inst[id].color * color;
 	o.irradiance = sk_lighting(o.normal);
@@ -61,15 +62,15 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 }
 
 float4 ps(psIn input) : SV_TARGET {
-	float4 albedo      = diffuse  .Sample(diffuse_s,  input.uv) * input.color;
-	float3 emissive    = emission .Sample(emission_s, input.uv).rgb * emission_factor.rgb;
-	float2 metal_rough = metal    .Sample(metal_s,    input.uv).gb; // rough is g, b is metallic
-	float  ao          = occlusion.Sample(occlusion_s,input.uv).r;  // occlusion is sometimes part of the metal tex, uses r channel
+	half2 metal_rough = (half2)metal    .Sample(metal_s,     input.uv).gb; // rough is g, b is metallic
+	half  ao          = (half )occlusion.Sample(occlusion_s, input.uv).r;  // occlusion is sometimes part of the metal tex, uses r channel
+	half4 albedo      = (half4)diffuse  .Sample(diffuse_s,   input.uv)     * input.color;
+	half3 emissive    = (half3)emission .Sample(emission_s,  input.uv).rgb * (half3)emission_factor.rgb;
 
-	float metallic_final = metal_rough.y * metallic;
-	float rough_final    = metal_rough.x * roughness;
+	half metallic_final = metal_rough.y * (half)metallic;
+	half rough_final    = metal_rough.x * (half)roughness;
 
 	float4 color = sk_pbr_shade(albedo, input.irradiance, ao, metallic_final, rough_final, input.view_dir, input.normal);
-	color.rgb += emissive;
+	color.rgb += (float3)emissive;
 	return color;
 }

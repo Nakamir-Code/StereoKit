@@ -776,6 +776,7 @@ SK_API fov_info_t       device_display_get_fov    (void);
 SK_API device_tracking_ device_get_tracking       (void);
 SK_API const char*      device_get_name           (void);
 SK_API const char*      device_get_runtime        (void);
+SK_API uint64_t         device_get_runtime_version(void);
 SK_API const char*      device_get_gpu            (void);
 SK_API bool32_t         device_has_eye_gaze       (void);
 SK_API bool32_t         device_has_hand_tracking  (void);
@@ -865,6 +866,8 @@ SK_API double        time_step             (void);
 SK_API void          time_scale            (double scale);
 SK_API void          time_set_time         (double total_seconds, double frame_elapsed_seconds sk_default(0));
 SK_API uint64_t      time_frame            (void);
+SK_API uint64_t      time_perf_cpu_us      (void);
+SK_API uint64_t      time_perf_gpu_us      (void);
 
 ///////////////////////////////////////////
 
@@ -2826,6 +2829,7 @@ SK_API openxr_handle_t   backend_openxr_get_instance        (void);
 SK_API openxr_handle_t   backend_openxr_get_session         (void);
 SK_API openxr_handle_t   backend_openxr_get_system_id       (void);
 SK_API openxr_handle_t   backend_openxr_get_space           (void);
+SK_API openxr_handle_t   backend_openxr_get_head_space      (void);
 SK_API int64_t           backend_openxr_get_time            (void);
 SK_API int64_t           backend_openxr_get_eyes_sample_time(void);
 SK_API void*             backend_openxr_get_function        (const char *function_name);

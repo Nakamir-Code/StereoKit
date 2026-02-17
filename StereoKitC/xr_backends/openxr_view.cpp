@@ -350,6 +350,12 @@ bool32_t xr_view_type_valid(XrViewConfigurationType type) {
 ///////////////////////////////////////////
 
 void openxr_views_destroy() {
+	// Wait for all GPU work to complete before destroying swapchain resources.
+	// The textures have ImageViews/Framebuffers that may still be referenced
+	// by in-flight command buffers, and OpenXR swapchain images can't be
+	// destroyed while in use.
+	vkDeviceWaitIdle(skr_get_vk_device());
+
 	for (int32_t i = 0; i < xr_displays.count; i++) {
 		device_display_delete(&xr_displays[i]);
 	}
@@ -506,10 +512,12 @@ bool openxr_display_swapchain_update(device_display_t *display) {
 	// Update or set the native textures
 	for (uint32_t back = 0; back < sc_color->backbuffer_count; back++) {
 		// Update our textures with the new swapchain display surfaces (VkImage for Vulkan)
+		// OpenXR swapchain images are owned by the runtime, not the application - they get
+		// destroyed when xrDestroySwapchain is called, so we pass owned=false here.
 		void *native_surface_col   = (void*)sc_color->backbuffers[back].image;
 		void *native_surface_depth = (void*)sc_depth->backbuffers[back].image;
-		tex_set_surface(sc_color->textures[back], native_surface_col,   tex_type_rendertarget, xr_preferred_color_format, sc_color->width, sc_color->height, array_count, 1);
-		tex_set_surface(sc_depth->textures[back], native_surface_depth, tex_type_depth,        xr_preferred_depth_format, sc_depth->width, sc_depth->height, array_count, 1);
+		tex_set_surface(sc_color->textures[back], native_surface_col,   tex_type_rendertarget, xr_preferred_color_format, sc_color->width, sc_color->height, array_count, 1, false);
+		tex_set_surface(sc_depth->textures[back], native_surface_depth, tex_type_depth,        xr_preferred_depth_format, sc_depth->width, sc_depth->height, array_count, 1, false);
 		tex_set_zbuffer(sc_color->textures[back], sc_depth->textures[back]);
 	}
 
@@ -785,6 +793,8 @@ bool openxr_render_frame() {
 
 	// Timing also needs some work, may be best as some sort of anchor system
 	xr_time = frame_state.predictedDisplayTime;
+	if (frame_state.predictedDisplayPeriod > 0)
+		device_data.display_refresh_rate = 1e9f / (float)frame_state.predictedDisplayPeriod;
 
 	// Execute any code that's dependent on the predicted time, such as
 	// updating the location of controller models. This often includes drawing,
@@ -1034,7 +1044,7 @@ void openxr_display_swapchain_release(device_display_t *display) {
 
 ///////////////////////////////////////////
 
-void openxr_views_update_fov() {
+void openxr_views_update_fov(XrTime time) {
 	if (xr_display_primary_idx == -1) return;
 	device_display_t* disp = &xr_displays[xr_display_primary_idx];
 
@@ -1043,7 +1053,7 @@ void openxr_views_update_fov() {
 	XrViewState      view_state  = { XR_TYPE_VIEW_STATE };
 	XrViewLocateInfo locate_info = { XR_TYPE_VIEW_LOCATE_INFO };
 	locate_info.viewConfigurationType = disp->type;
-	locate_info.displayTime           = xr_time;
+	locate_info.displayTime           = time;
 	locate_info.space                 = xr_head_space; // We don't need app space here, and app space may not be valid yet
 	if (XR_FAILED(xrLocateViews(xr_session, &locate_info, &view_state, disp->view_cap, &view_count, disp->view_xr)))
 		return;

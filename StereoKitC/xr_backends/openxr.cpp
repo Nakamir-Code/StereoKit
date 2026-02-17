@@ -223,12 +223,13 @@ bool openxr_create_system() {
 		xr_check(xrGetInstanceProperties(xr_instance, &inst_properties),
 			"xrGetInstanceProperties");
 
-		device_data.runtime = string_copy(inst_properties.runtimeName);
-		log_diagf("OpenXR runtime: <~grn>%s<~clr> %u.%u.%u",
-			inst_properties.runtimeName,
-			XR_VERSION_MAJOR(inst_properties.runtimeVersion),
-			XR_VERSION_MINOR(inst_properties.runtimeVersion),
-			XR_VERSION_PATCH(inst_properties.runtimeVersion));
+	device_data.runtime = string_copy(inst_properties.runtimeName);
+	device_data.runtime_version = inst_properties.runtimeVersion;
+	log_diagf("OpenXR runtime: <~grn>%s<~clr> %u.%u.%u",
+		inst_properties.runtimeName,
+		XR_VERSION_MAJOR(inst_properties.runtimeVersion),
+		XR_VERSION_MINOR(inst_properties.runtimeVersion),
+		XR_VERSION_PATCH(inst_properties.runtimeVersion));
 
 		// This is an incomplete list of runtimes, we sometimes use these
 		// internally for runtime compatibility fixes.
@@ -768,7 +769,7 @@ bool openxr_poll_events() {
 					// be available as soon as the session begins, for apps that
 					// are listening to sk_app_focus changing to determine if FoV
 					// is ready.
-					openxr_views_update_fov();
+					openxr_views_update_fov(changed->time);
 				}
 			} break;
 			case XR_SESSION_STATE_SYNCHRONIZED: break; // We're connected to a session, but not visible to users yet.
@@ -853,9 +854,17 @@ openxr_handle_t backend_openxr_get_system_id() {
 ///////////////////////////////////////////
 
 openxr_handle_t backend_openxr_get_space() {
-	if (backend_xr_get_type() != backend_xr_type_openxr) 
+	if (backend_xr_get_type() != backend_xr_type_openxr)
 		log_err("backend_openxr_ functions only work when OpenXR is the backend!");
 	return (openxr_handle_t)xr_app_space;
+}
+
+///////////////////////////////////////////
+
+openxr_handle_t backend_openxr_get_head_space() {
+	if (backend_xr_get_type() != backend_xr_type_openxr)
+		log_err("backend_openxr_ functions only work when OpenXR is the backend!");
+	return (openxr_handle_t)xr_head_space;
 }
 
 ///////////////////////////////////////////

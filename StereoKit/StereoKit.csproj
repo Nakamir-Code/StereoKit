@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework> <!--Update the PDB URL in StereoKit.targets if changing-->
+		<ImplicitUsings>disable</ImplicitUsings>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 		<OutputPath>../bin/</OutputPath>
 		<DocumentationFile>../bin/StereoKit.xml</DocumentationFile>
@@ -39,7 +40,7 @@
 	<ItemGroup>
 		<None    Pack="true" Visible="false" Include="../tools/img/StereoKitLogo64.png" PackagePath="images/" />
 
-		<Content Pack="true" Visible="false" Include="../bin/net8.0/StereoKit.pdb" PackagePath="lib/net8.0/" />
+		<Content Pack="true" Visible="false" Include="../bin/$(TargetFramework)/StereoKit.pdb" PackagePath="lib/$(TargetFramework)/" />
 		
 		<!-- Win32 DLLs -->
 		<Content Pack="true" Visible="false" Include="../bin/distribute/bin/Win32/x64/Release/StereoKitC.dll" PackagePath="runtimes/win-x64/native/" Condition="Exists('../bin/distribute/bin/Win32/x64/Release/StereoKitC.dll')"/>
@@ -66,11 +67,11 @@
 		<Content Pack="true" Visible="false" Include="../bin/distribute/bin/MacOS/arm64/Release/libMoltenVK.dylib"   PackagePath="runtimes/osx-arm64/native/" Condition="Exists('../bin/distribute/bin/MacOS/arm64/Release/libMoltenVK.dylib')"/>
 
 		<!-- Shader compile tools -->
-		<Content Pack="true" Visible="false" Include="../tools/skshaderc/win32_x64/skshaderc.exe"   PackagePath="tools/skshaderc/win32_x64/" />
-		<Content Pack="true" Visible="false" Include="../tools/skshaderc/win32_arm64/skshaderc.exe" PackagePath="tools/skshaderc/win32_arm64/" />
-		<Content Pack="true" Visible="false" Include="../tools/skshaderc/linux_x64/skshaderc"       PackagePath="tools/skshaderc/linux_x64/" />
-		<Content Pack="true" Visible="false" Include="../tools/skshaderc/linux_arm64/skshaderc"     PackagePath="tools/skshaderc/linux_arm64/" />
-		<Content Pack="true" Visible="false" Include="../tools/skshaderc/macos_arm64/skshaderc"     PackagePath="tools/skshaderc/macos_arm64/" />
+		<Content Pack="true" Visible="false" Include="../bin/tools/win32_x64/skshaderc.exe"   PackagePath="tools/skshaderc/win32_x64/"   Condition="Exists('../bin/tools/win32_x64/skshaderc.exe')"/>
+		<Content Pack="true" Visible="false" Include="../bin/tools/win32_arm64/skshaderc.exe" PackagePath="tools/skshaderc/win32_arm64/" Condition="Exists('../bin/tools/win32_arm64/skshaderc.exe')"/>
+		<Content Pack="true" Visible="false" Include="../bin/tools/linux_x64/skshaderc"       PackagePath="tools/skshaderc/linux_x64/"   Condition="Exists('../bin/tools/linux_x64/skshaderc')"/>
+		<Content Pack="true" Visible="false" Include="../bin/tools/linux_arm64/skshaderc"     PackagePath="tools/skshaderc/linux_arm64/" Condition="Exists('../bin/tools/linux_arm64/skshaderc')"/>
+		<Content Pack="true" Visible="false" Include="../bin/tools/macos_arm64/skshaderc"     PackagePath="tools/skshaderc/macos_arm64/" Condition="Exists('../bin/tools/macos_arm64/skshaderc')"/>
 		<Content Pack="true" Visible="false" Include="../tools/include/*.*" PackagePath="tools/include/" />
 
 		<!-- Targets and copies and commands for the NuGet package once it's in

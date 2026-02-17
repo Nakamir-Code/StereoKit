@@ -480,6 +480,8 @@ float  time_stepf            (){ return local.timev_stepf;     };
 double time_step             (){ return local.timev_step;      };
 void   time_scale(double scale) { local.timev_scale = scale; }
 uint64_t time_frame() { return local.frame; }
+uint64_t time_perf_cpu_us() { return skr_renderer_get_cpu_time_us(); }
+uint64_t time_perf_gpu_us() { return skr_renderer_get_gpu_time_us(); }
 
 ///////////////////////////////////////////
 

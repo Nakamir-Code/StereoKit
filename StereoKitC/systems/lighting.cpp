@@ -26,7 +26,7 @@ struct lighting_state_t {
 	material_t              sky_mat_default;
 	bool32_t                sky_show;
 	tex_t                   sky_pending_tex;
-	vec4                    lighting[9];
+	vec4                    lighting[7];
 	spherical_harmonics_t   lighting_src;
 };
 static lighting_state_t local = {};

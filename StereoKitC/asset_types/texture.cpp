@@ -47,8 +47,22 @@ const char *tex_msg_inconsistent_parse    = "Texture data doesn't match earlier 
 const char *tex_msg_requires_rendertarget = "Zbuffer can only be attached to a rendertarget!";
 const char *tex_msg_requires_depth        = "Zbuffer must be a depth texture!";
 
-tex_t tex_error_texture   = nullptr;
-tex_t tex_loading_texture = nullptr;
+tex_t tex_error_texture           = nullptr;
+tex_t tex_loading_texture         = nullptr;
+tex_t tex_error_texture_cubemap   = nullptr;
+tex_t tex_loading_texture_cubemap = nullptr;
+
+tex_t _tex_get_loading_fallback(tex_t texture) {
+	return (texture->type & tex_type_cubemap)
+		? tex_loading_texture_cubemap
+		: tex_loading_texture;
+}
+
+tex_t _tex_get_error_fallback(tex_t texture) {
+	return (texture->type & tex_type_cubemap)
+		? tex_error_texture_cubemap
+		: tex_error_texture;
+}
 
 ///////////////////////////////////////////
 // Helper functions for sk_renderer API  //
@@ -284,7 +298,7 @@ end:
 		tex->header.state = asset_state_loaded_meta;
 		return true;
 	} else {
-		tex_set_fallback(tex, tex_error_texture);
+		tex_set_fallback(tex, _tex_get_error_fallback(tex));
 		return false;
 	}
 }
@@ -304,7 +318,8 @@ bool32_t tex_load_arr_upload(asset_task_t *, asset_header_t *asset, void *job_da
 ///////////////////////////////////////////
 
 void tex_load_on_failure(asset_header_t *asset, void *) {
-	tex_set_fallback((tex_t)asset, tex_error_texture);
+	tex_t tex = (tex_t)asset;
+	tex_set_fallback(tex, _tex_get_error_fallback(tex));
 }
 
 ///////////////////////////////////////////
@@ -534,7 +549,7 @@ tex_t tex_create(tex_type_ type, tex_format_ format) {
 	result->anisotropy   = 4;
 	result->header.state = asset_state_none;
 
-	tex_set_fallback(result, tex_loading_texture);
+	tex_set_fallback(result, _tex_get_loading_fallback(result));
 
 	return result;
 }
@@ -891,10 +906,12 @@ tex_t tex_get_zbuffer(tex_t texture) {
 ///////////////////////////////////////////
 
 void tex_set_surface(tex_t texture, void *native_surface, tex_type_ type, int64_t native_fmt, int32_t width, int32_t height, int32_t surface_count, int32_t multisample, bool32_t owned) {
-	texture->owned = owned;
-
-	if (texture->owned && skr_tex_is_valid(&texture->gpu_tex))
+	// Always destroy old GPU resources when valid - skr_tex_destroy handles
+	// is_external internally to decide whether to destroy the VkImage.
+	if (skr_tex_is_valid(&texture->gpu_tex))
 		skr_tex_destroy(&texture->gpu_tex);
+
+	texture->owned = owned;
 
 	texture->type   = type;
 	texture->format = tex_get_tex_format(native_fmt);
@@ -909,7 +926,7 @@ void tex_set_surface(tex_t texture, void *native_surface, tex_type_ type, int64_
 		info.array_layers  = surface_count;
 		info.owns_image    = owned;
 
-		skr_tex_create_external(info, &texture->gpu_tex);
+		skr_tex_create_external_vk(info, &texture->gpu_tex);
 	} else {
 		texture->gpu_tex = {};
 	}
@@ -921,7 +938,7 @@ void tex_set_surface(tex_t texture, void *native_surface, tex_type_ type, int64_
 		? asset_state_loaded
 		: asset_state_error;
 	tex_set_fallback(texture, texture->header.state <= 0
-		? tex_error_texture
+		? _tex_get_error_fallback(texture)
 		: nullptr);
 }
 
@@ -990,7 +1007,11 @@ void tex_destroy(tex_t tex) {
 	assets_on_load_remove(&tex->header, nullptr);
 
 	sk_free(tex->light_info);
-	if (tex->owned && skr_tex_is_valid(&tex->gpu_tex)) {
+	// Always destroy GPU resources when valid - skr_tex_destroy checks is_external
+	// internally to decide whether to destroy the VkImage (external images like
+	// OpenXR swapchains won't have their VkImage destroyed, but ImageViews and
+	// Framebuffers that we created will still be cleaned up).
+	if (skr_tex_is_valid(&tex->gpu_tex)) {
 		skr_tex_destroy(&tex->gpu_tex);
 	}
 	if (tex->depth_buffer != nullptr) tex_release(tex->depth_buffer);
@@ -1044,14 +1065,19 @@ void _tex_set_color_arr(tex_t texture, int32_t width, int32_t height, void **arr
 
 		uint8_t* dst = (uint8_t*)flat_data;
 
-		// Convert from layer-major (array_data[layer * mip_count + mip]) to mip-major
+		// Convert from packed layer data to mip-major layout.
+		// KTX2/basisu pack all mips for each layer into a single allocation:
+		//   array_data[layer] points to: [mip0][mip1][mip2]...
+		// We need to convert to mip-major: all layers for mip0, then mip1, etc.
+		uint64_t mip_offset = 0;
 		for (int32_t mip = 0; mip < mip_count; mip++) {
 			uint64_t mip_size = skr_tex_calc_mip_size((skr_tex_fmt_)texture->format, base_size, mip);
 			for (int32_t layer = 0; layer < array_count; layer++) {
-				int32_t src_idx = layer * mip_count + mip;
-				memcpy(dst, array_data[src_idx], (size_t)mip_size);
+				uint8_t* src = ((uint8_t*)array_data[layer]) + mip_offset;
+				memcpy(dst, src, (size_t)mip_size);
 				dst += mip_size;
 			}
+			mip_offset += mip_size;
 		}
 
 		tex_data.data        = flat_data;
@@ -1137,7 +1163,7 @@ void _tex_set_color_arr(tex_t texture, int32_t width, int32_t height, void **arr
 		tex_set_fallback(texture, nullptr);
 		texture->header.state = asset_state_loaded;
 	} else {
-		tex_set_fallback(texture, tex_error_texture);
+		tex_set_fallback(texture, _tex_get_error_fallback(texture));
 		texture->header.state = asset_state_error;
 	}
 }
@@ -1511,8 +1537,20 @@ void tex_set_loading_fallback(tex_t loading_texture) {
 		}
 		tex_addref(loading_texture);
 	}
-	tex_release(tex_loading_texture);
-	tex_loading_texture = loading_texture;
+	// Assign to the appropriate fallback based on texture type, or clear both
+	// if nullptr
+	if (loading_texture == nullptr) {
+		tex_release(tex_loading_texture);
+		tex_release(tex_loading_texture_cubemap);
+		tex_loading_texture         = nullptr;
+		tex_loading_texture_cubemap = nullptr;
+	} else if (loading_texture->type & tex_type_cubemap) {
+		tex_release(tex_loading_texture_cubemap);
+		tex_loading_texture_cubemap = loading_texture;
+	} else {
+		tex_release(tex_loading_texture);
+		tex_loading_texture = loading_texture;
+	}
 }
 
 ///////////////////////////////////////////
@@ -1526,8 +1564,20 @@ void tex_set_error_fallback(tex_t error_texture) {
 		}
 		tex_addref(error_texture);
 	}
-	tex_release(tex_error_texture);
-	tex_error_texture = error_texture;
+	// Assign to the appropriate fallback based on texture type, or clear both
+	// if nullptr
+	if (error_texture == nullptr) {
+		tex_release(tex_error_texture);
+		tex_release(tex_error_texture_cubemap);
+		tex_error_texture         = nullptr;
+		tex_error_texture_cubemap = nullptr;
+	} else if (error_texture->type & tex_type_cubemap) {
+		tex_release(tex_error_texture_cubemap);
+		tex_error_texture_cubemap = error_texture;
+	} else {
+		tex_release(tex_error_texture);
+		tex_error_texture = error_texture;
+	}
 }
 
 ///////////////////////////////////////////
@@ -1668,8 +1718,39 @@ tex_t tex_gen_cubemap(const gradient_t gradient_bot_to_top, vec3 gradient_dir, i
 		sk_free(data[i]);
 	}
 
+	// Compute SH by sampling the gradient at uniformly distributed directions
+	// on a sphere using a Fibonacci spiral.
+	spherical_harmonics_t sh = {};
+	const int32_t sample_count = 64;
+	const float   golden_ratio = 1.618033988749895f;
+	const float   golden_angle = (MATH_PI * 2.0f) / (golden_ratio * golden_ratio);
+
+	for (int32_t i = 0; i < sample_count; i++) {
+		float t           = (float)i / (float)sample_count;
+		float inclination = acosf(1.0f - 2.0f * t);
+		float azimuth     = golden_angle * (float)i;
+
+		vec3 dir = {
+			sinf(inclination) * cosf(azimuth),
+			cosf(inclination),
+			sinf(inclination) * sinf(azimuth) };
+
+		float    pct = (vec3_dot(dir, gradient_dir) + 1.0f) * 0.5f;
+		color128 c   = gradient_get(gradient_bot_to_top, pct);
+		sh_add(sh, dir, { c.r, c.g, c.b });
+	}
+
+	for (int32_t i = 0; i < 9; i++)
+		sh.coefficients[i] /= (float)sample_count;
+
+	sh_windowing(sh, 0.01f);
+
+	// Store in texture for later retrieval
+	result->light_info  = sk_malloc_t(spherical_harmonics_t, 1);
+	*result->light_info = sh;
+
 	if (out_sh_lighting_info != nullptr)
-		*out_sh_lighting_info = tex_get_cubemap_lighting(result);
+		*out_sh_lighting_info = sh;
 
 	return result;
 }
