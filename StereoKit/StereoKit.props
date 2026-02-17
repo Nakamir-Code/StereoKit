@@ -16,12 +16,9 @@
 		<PropertyGroup>
 			<!--These variables are not populated outside of Targets-->
 			<SKBuildPlatform                                                                                       >Desktop</SKBuildPlatform>
-			<SKBuildPlatform Condition="'$(TargetFrameworkIdentifier)'=='MonoAndroid'"                             >Android</SKBuildPlatform>
 			<SKBuildPlatform Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))=='android'">Android</SKBuildPlatform>
 			<SKBuildPlatform Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))=='windows'">CoreWindows</SKBuildPlatform>
-			<SKBuildNET Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'"  >Core</SKBuildNET>
-			<SKBuildNET Condition="'$(TargetFrameworkIdentifier)'=='MonoAndroid'"  >Mono</SKBuildNET>
-			<SKBuildNET Condition="'$(TargetFrameworkIdentifier)'=='.NETFramework'">Framework</SKBuildNET>
+			<SKBuildNET Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">Core</SKBuildNET>
 
 			<SKCopyAssets Condition="'$(SKCopyAssets)' == '' and $(SKAssetFolder.StartsWith('..'))">true</SKCopyAssets>
 

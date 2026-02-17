@@ -12,12 +12,11 @@
 
 	<!-- References -->
 	<ItemGroup>
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All"/>
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
 	</ItemGroup>
 
 	<!-- NuGet package -->
 	<PropertyGroup>
-		<Id>StereoKit</Id>
 		<Version>0.3.9</Version>
 		<Title>StereoKit</Title>
 		<Authors>Nick Klingensmith</Authors>
@@ -80,7 +79,6 @@
 		<Content Pack="true" Include="StereoKit.props"   PackagePath="build/" />
 		<Content Pack="true" Include="SKAssets.targets"  PackagePath="build/" />
 		<Content Pack="true" Include="SKShaders.targets" PackagePath="build/" />
-		<Content Pack="true" Include="SKMaui.targets"    PackagePath="build/" />
 		<Content Pack="true" Include="SKShader.xml"      PackagePath="build/" />
 	</ItemGroup>
 

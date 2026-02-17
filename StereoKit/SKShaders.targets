@@ -9,7 +9,7 @@
 		<PropertyPageSchema Include="$(MSBuildThisFileDirectory)SKShader.xml" />
 		<!-- Hook up SKShader items to be built by the target. -->
 		<AvailableItemName Include="SKShader">
-			<Targets>SKShaderBuild</Targets>
+			<Targets>StereoKit_ShaderBuild</Targets>
 		</AvailableItemName>
 	</ItemGroup>
 
@@ -21,7 +21,9 @@
 		<SKShadercExe Condition="$([MSBuild]::IsOSPlatform('Linux'))"  >skshaderc/linux_$(PlatformArch)/skshaderc</SKShadercExe>
 		<SKShadercExe Condition="$([MSBuild]::IsOSPlatform('OSX'))"    >skshaderc/macos_$(PlatformArch)/skshaderc</SKShadercExe>
 		<SKShadercPath>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)../tools/$(SKShadercExe)'))</SKShadercPath>
-		<SKAutoFindShaders Condition="'$(SKAutoFindShaders)' == ''">True</SKAutoFindShaders>
+		<!-- Needs to be normalized for Linux, also a trailing '\' will act
+		     as an escape character for quotes. -->
+		<IncludeFolderNormalized Condition="'$(SKShaderStandardInclude)'!=''">$([MSBuild]::NormalizeDirectory('$(SKShaderStandardInclude)').TrimEnd('\'))</IncludeFolderNormalized>
 	</PropertyGroup>
 
 	<!-- Automatically include shaders, library projects should not compile
@@ -43,10 +45,6 @@
 		<PropertyGroup>
 			<SKOpt Condition="'$(Configuration)'=='Release'">-o3</SKOpt>
 			<SKOpt Condition="'$(Configuration)'=='Debug'">-d</SKOpt>
-
-			<!-- Needs to be normalized for Linux, also a trailing '\' will act
-			     as an escape character for quotes. -->
-			<IncludeFolderNormalized>$([MSBuild]::NormalizeDirectory('$(SKShaderStandardInclude)').TrimEnd('\'))</IncludeFolderNormalized>
 		</PropertyGroup>
 
 		<!-- Setup metadata for custom build tool -->

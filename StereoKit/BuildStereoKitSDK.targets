@@ -13,7 +13,6 @@
 		<SKSDKFolder Condition="'$(SKSDKFolder)'!=''">$([MSBuild]::NormalizePath('$(SKSDKFolder)'))</SKSDKFolder>
 
 		<!-- Get a nice name for the OS/Platform we're building for. -->
-		<SKSDKBuildOS Condition="'$(TargetFrameworkIdentifier)'=='MonoAndroid'"                             >Android</SKSDKBuildOS>
 		<SKSDKBuildOS Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))=='android'">Android</SKSDKBuildOS>
 		<SKSDKBuildOS Condition="'$(SKSDKBuildOS)'=='' and '$(OS)'=='Windows_NT'"                           >Win32</SKSDKBuildOS>
 		<SKSDKBuildOS Condition="'$(SKSDKBuildOS)'=='' and $([MSBuild]::IsOSPlatform('OSX'))"               >MacOS</SKSDKBuildOS>
