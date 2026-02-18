@@ -78,6 +78,8 @@ struct input_state_t {
 	array_t<evt_button_t> evt_buttons;
 	array_t<evt_float_t>  evt_floats;
 	array_t<evt_xy_t>     evt_xys;
+
+	bool                  initialized;
 };
 static input_state_t local = {};
 
@@ -93,11 +95,18 @@ void input_mouse_update();
 bool input_init() {
 	profiler_zone();
 
+	// Preserve values that may have been set before init, such as palm
+	// offsets from OpenXR interaction profile events.
+	pose_t palm_offset[2]     = { local.palm_offset[0],     local.palm_offset[1]     };
+	bool   controller_hand[2] = { local.controller_hand[0], local.controller_hand[1] };
+
 	local = {};
-	input_head_pose_local = pose_identity;
-	local.eyes_pose_local = pose_identity;
-	local.palm_offset[0] = pose_identity;
-	local.palm_offset[1] = pose_identity;
+	input_head_pose_local    = pose_identity;
+	local.eyes_pose_local    = pose_identity;
+	local.palm_offset[0]     = palm_offset[0];
+	local.palm_offset[1]     = palm_offset[1];
+	local.controller_hand[0] = controller_hand[0];
+	local.controller_hand[1] = controller_hand[1];
 
 	local.mtx_poses   = ft_mutex_create();
 	local.mtx_floats  = ft_mutex_create();
@@ -108,6 +117,8 @@ bool input_init() {
 	input_hand_init();
 	input_mouse_update();
 	input_render_init();
+
+	local.initialized = true;
 	return true;
 }
 
@@ -503,6 +514,8 @@ vec2          input_xy_get        (input_xy_     xy_type)     { return xy_type  
 ///////////////////////////////////////////
 
 void input_reset() {
+	if (!local.initialized) return;
+
 	// Set all poses to un-tracked.
 	ft_mutex_lock(local.mtx_poses);
 	local.evt_poses.clear();
