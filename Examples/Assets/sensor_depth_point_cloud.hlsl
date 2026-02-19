@@ -1,6 +1,6 @@
 #include <stereokit.hlsli>
 
-//--name = app/env_depth_point_cloud
+//--name = app/sensor_depth_point_cloud
 
 //--diffuse = white
 Texture2DArray diffuse   : register(t0);
@@ -90,7 +90,7 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 		o.pos.xy = (point_size * input.off / float2(aspect, 1)) * o.pos.w + o.pos.xy;
 	}
 
-	// Optional: Map depth to a color gradient over a fixed 0–5m range for visualizing depth
+	// Optional: Map depth to a color gradient over a fixed 0-5m range for visualizing depth
 	if (color_by_depth > 0.5) {
 		float t = saturate(depth_m / 5.0);
 		o.color = float4(1.0 - t, 1.0 - abs(t - 0.5) * 2.0, t, (input.color * color).a);

@@ -42,6 +42,7 @@ shader_t     sk_default_shader_ui_aura;
 shader_t     sk_default_shader_sky;
 shader_t     sk_default_shader_lines;
 shader_t     sk_default_shader_sh_compute;
+shader_t     sk_default_shader_depth_prepass;
 material_t   sk_default_material;
 material_t   sk_default_material_pbr;
 material_t   sk_default_material_pbr_clip;
@@ -209,6 +210,7 @@ bool defaults_init() {
 	SHADER_DECODE(sks_shader_builtin_pbr_hlsl_zip        ); sk_default_shader_pbr         = shader_create_mem(data, size);
 	SHADER_DECODE(sks_shader_builtin_pbr_clip_hlsl_zip   ); sk_default_shader_pbr_clip    = shader_create_mem(data, size);
 	SHADER_DECODE(sks_shader_builtin_sh_compute_hlsl_zip ); sk_default_shader_sh_compute  = shader_create_mem(data, size);
+	SHADER_DECODE(sks_shader_builtin_sensor_depth_prepass_hlsl_zip); sk_default_shader_depth_prepass = shader_create_mem(data, size);
 	sk_free(data);
 #undef SHADER_DECODE
 	
@@ -258,6 +260,7 @@ bool defaults_init() {
 	shader_set_id(sk_default_shader_sky,         default_id_shader_sky);
 	shader_set_id(sk_default_shader_lines,       default_id_shader_lines);
 	shader_set_id(sk_default_shader_sh_compute,  default_id_shader_sh_compute);
+	shader_set_id(sk_default_shader_depth_prepass, default_id_shader_depth_prepass);
 
 	// Materials
 	sk_default_material             = material_create(sk_default_shader);
@@ -408,6 +411,7 @@ void defaults_shutdown() {
 	shader_release  (sk_default_shader_pbr);
 	shader_release  (sk_default_shader_pbr_clip);
 	shader_release  (sk_default_shader_sh_compute);
+	shader_release  (sk_default_shader_depth_prepass);
 	mesh_release    (sk_default_cube);
 	mesh_release    (sk_default_sphere);
 	mesh_release    (sk_default_quad);

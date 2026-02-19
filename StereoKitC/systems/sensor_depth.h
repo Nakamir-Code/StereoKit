@@ -9,11 +9,11 @@
 
 namespace sk {
 
-typedef enum environment_depth_system_ {
-	environment_depth_system_none,
-	environment_depth_system_openxr_meta,
-} environment_depth_system_;
+typedef enum sensor_depth_system_ {
+	sensor_depth_system_none,
+	sensor_depth_system_openxr_meta,
+} sensor_depth_system_;
 
-void environment_depth_register();
+void sensor_depth_register();
 
 }

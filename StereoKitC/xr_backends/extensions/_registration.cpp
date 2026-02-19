@@ -6,7 +6,8 @@
 
 #include "../openxr.h"
 #include "../../asset_types/anchor.h"
-#include "../../systems/environment_depth.h"
+#include "../../systems/sensor.h"
+#include "../../systems/sensor_depth.h"
 
 #include "ext_management.h"
 #include "_registration.h"
@@ -76,7 +77,8 @@ bool ext_registration() {
 	oxri_register();
 
 	anchors_register();
-	environment_depth_register();
+	sensor_register();
+	sensor_depth_register();
 
 	return true;
 }

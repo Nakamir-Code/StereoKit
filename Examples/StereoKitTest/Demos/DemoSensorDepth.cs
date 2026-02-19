@@ -6,7 +6,7 @@
 using System;
 using StereoKit;
 
-class DemoEnvironmentDepth : ITest
+class DemoSensorDepth : ITest
 {
 	enum EyeMode
 	{
@@ -21,8 +21,8 @@ class DemoEnvironmentDepth : ITest
 		Occlusion,
 	}
 
-	string title       = "Environment Depth";
-	string description = "Environment depth visualization. Switch between a point cloud view and depth-based occlusion of virtual objects.";
+	string title       = "Sensor Depth";
+	string description = "Sensor depth visualization. Switch between a point cloud view and automatic World.Occlusion depth-based occlusion.";
 
 	Pose controlsPose  = (Matrix.T(-0.22f, 0.02f, 0) * Demo.contentPose).Pose;
 
@@ -32,8 +32,7 @@ class DemoEnvironmentDepth : ITest
 	Mesh     pointMesh;
 
 	// Occlusion
-	Model    occlusionModel;
-	Material occlusionMat;
+	Model    model;
 	Pose     modelPose;
 	float    modelScale = 0.25f;
 
@@ -44,65 +43,73 @@ class DemoEnvironmentDepth : ITest
 	float    nearClip     = 0.1f;
 	float    opacity      = 0.25f;
 	float    depthScale   = 1.0f;
-	bool     handRemoval  = false;
 	bool     colorByDepth = false;
+	bool     handToggle   = true;
 
-	bool                   hasFrame;
-	EnvironmentDepth.Frame latestFrame;
-	uint                   meshWidth;
-	uint                   meshHeight;
-	int                    meshStep;
+	bool             hasFrame;
+	SensorDepthFrame latestFrame;
+	uint             meshWidth;
+	uint             meshHeight;
+	int              meshStep;
 
 	public void Initialize()
 	{
 		// Point cloud materials
-		Shader pointShader = Shader.FromFile("env_depth_point_cloud.hlsl");
+		Shader pointShader = Shader.FromFile("sensor_depth_point_cloud.hlsl");
 		pointCloudMatL = new(pointShader) { Transparency = Transparency.Blend, DepthWrite = false };
 		pointCloudMatR = new(pointShader) { Transparency = Transparency.Blend, DepthWrite = false };
 		pointCloudMatL["screen_size"] = 0.0f;
 		pointCloudMatR["screen_size"] = 0.0f;
 
-		// Occlusion material & model
-		Shader occlusionShader = Shader.FromFile("env_depth_occlusion.hlsl");
-		occlusionMat   = new(occlusionShader);
-		occlusionModel = Model.FromFile("DamagedHelmet.gltf");
+		model = Model.FromFile("DamagedHelmet.gltf");
 
 		// Place the helmet 1m in front of the user at head height
 		modelPose = new Pose(0, 0, -0.6f, Quat.LookDir(0, 0, 1));
 
 		Permission.Request(PermissionType.Scene);
 
-		if (!EnvironmentDepth.IsAvailable)
+		if (!Sensor.Depth.IsAvailable)
 		{
-			Log.Warn("Environment depth is not available on this runtime.");
+			Log.Warn("Sensor depth is not available on this runtime.");
 			return;
 		}
 
-		EnvironmentDepth.Start();
+		Sensor.Depth.Start();
+
+		Tex tex = Sensor.Depth.Texture;
+		if (tex != null)
+		{
+			pointCloudMatL[MatParamName.DiffuseTex] = tex;
+			pointCloudMatR[MatParamName.DiffuseTex] = tex;
+		}
 	}
 
 	public void Shutdown()
 	{
-		if (EnvironmentDepth.IsRunning)
-			EnvironmentDepth.Stop();
+		if (demoMode == DemoMode.Occlusion)
+			World.Occlusion = OcclusionCaps.None;
+
+		if (Sensor.Depth.IsRunning)
+			Sensor.Depth.Stop();
 	}
 
 	public void Step()
 	{
-		EnvironmentDepth.Frame frame = default;
-		bool gotFrame = EnvironmentDepth.TryGetLatestFrame(out frame) && frame.Texture != null;
-		if (gotFrame)
+		if (demoMode == DemoMode.PointCloud)
 		{
-			hasFrame = true;
-			latestFrame = frame;
-			if (demoMode is DemoMode.PointCloud)
-				EnsurePointMesh(frame.Width, frame.Height, sampleStep);
-		}
+			if (Sensor.Depth.TryGetLatestFrame(out SensorDepthFrame frame))
+			{
+				hasFrame    = true;
+				latestFrame = frame;
+				EnsurePointMesh(frame.width, frame.height, sampleStep);
+			}
 
-		if (demoMode is DemoMode.PointCloud)
 			DrawPointCloud();
+		}
 		else
+		{
 			DrawOcclusion();
+		}
 
 		DrawControls();
 	}
@@ -114,96 +121,40 @@ class DemoEnvironmentDepth : ITest
 
 		if (eyeMode is EyeMode.Left or EyeMode.Both)
 		{
-			SetPointCloudEyeParams(pointCloudMatL, latestFrame.Left, 0, new Color(0.40f, 0.85f, 1.0f, 1));
+			SetPointCloudEyeParams(pointCloudMatL, latestFrame.views[0], 0, new Color(0.40f, 0.85f, 1.0f, 1));
 			pointMesh.Draw(pointCloudMatL, Matrix.Identity);
 		}
 		if (eyeMode is EyeMode.Right or EyeMode.Both)
 		{
-			SetPointCloudEyeParams(pointCloudMatR, latestFrame.Right, 1, new Color(1.0f, 0.75f, 0.35f, 1));
+			SetPointCloudEyeParams(pointCloudMatR, latestFrame.views[1], 1, new Color(1.0f, 0.75f, 0.35f, 1));
 			pointMesh.Draw(pointCloudMatR, Matrix.Identity);
 		}
 	}
 
 	void DrawOcclusion()
 	{
-		if (!hasFrame || occlusionModel is null)
+		if (model is null)
 			return;
 
-		UI.Handle("OcclusionModel", ref modelPose, occlusionModel.Bounds * modelScale);
-		SetOcclusionParams(occlusionMat);
-		occlusionModel.Draw(occlusionMat, modelPose.ToMatrix(modelScale), Color.White);
+		UI.Handle("OcclusionModel", ref modelPose, model.Bounds * modelScale);
+		model.Draw(modelPose.ToMatrix(modelScale), Color.White);
 	}
 
-	Matrix BuildDepthViewProj(EnvironmentDepth.View eye)
+	void SetPointCloudEyeParams(Material mat, SensorDepthView eye, int eyeLayer, Color color)
 	{
-		// View matrix transforms world -> depth eye space
-		Matrix viewMat = eye.Pose.ToMatrix().Inverse;
-
-		// Projection matrix from asymmetric FOV tangents
-		float l = MathF.Tan(eye.Fov.left   * Units.deg2rad);
-		float r = MathF.Tan(eye.Fov.right  * Units.deg2rad);
-		float t = MathF.Tan(eye.Fov.top    * Units.deg2rad);
-		float b = MathF.Tan(eye.Fov.bottom * Units.deg2rad);
-
-		// Build an infinite reverse-Z or standard projection.
-		// For depth comparison we use the OpenGL-style projection that
-		// matches the depth texture's z_window encoding.
-		float n = latestFrame.NearZ;
-		float width  = r - l;
-		float height = t - b;
-
-		Matrix projectionMat;
-		if (float.IsInfinity(latestFrame.FarZ))
-		{
-			// Infinite far plane (OpenGL convention: z_ndc ∈ [-1,1], z_window = (z_ndc+1) / 2)
-			// Using tangent values directly, so no near-plane multiplier on [0][0] and [1][1]
-			projectionMat = new(
-				2.0f / width,    0,                 0,      0,
-				0,               2.0f / height,     0,      0,
-				(r + l) / width, (t + b) / height, -1,     -1,
-				0,               0,                -2 * n,  0
-			);
-		}
-		else
-		{
-			float f = latestFrame.FarZ;
-			projectionMat = new(
-				2.0f / width,    0,                0,                     0,
-				0,               2.0f / height,    0,                     0,
-				(r + l) / width, (t + b) / height, -(f + n) / (f - n),   -1,
-				0,               0,                -2 * f * n / (f - n),  0
-			);
-		}
-
-		return viewMat * projectionMat;
-	}
-
-	void SetOcclusionParams(Material mat)
-	{
-		mat["env_depth"]  = latestFrame.Texture;
-		mat["depth_near"] = latestFrame.NearZ;
-		mat["depth_far"]  = latestFrame.FarZ;
-
-		mat["depth_view_proj_l"] = BuildDepthViewProj(latestFrame.Left);
-		mat["depth_view_proj_r"] = BuildDepthViewProj(latestFrame.Right);
-	}
-
-	void SetPointCloudEyeParams(Material mat, EnvironmentDepth.View eye, int eyeLayer, Color color)
-	{
-		mat[MatParamName.DiffuseTex] = latestFrame.Texture;
 		mat["point_size"]     = pointSize;
-		mat["depth_near"]     = latestFrame.NearZ;
-		mat["depth_far"]      = latestFrame.FarZ;
+		mat["depth_near"]     = latestFrame.nearZ;
+		mat["depth_far"]      = latestFrame.farZ;
 		mat["depth_scale"]    = depthScale;
 		mat["near_clip"]      = nearClip;
 		mat["eye_layer"]      = (float)eyeLayer;
-		mat["eye_pose"]       = eye.Pose.ToMatrix();
+		mat["eye_pose"]       = eye.pose.ToMatrix();
 		mat["color_by_depth"] = colorByDepth ? 1.0f : 0.0f;
 
-		float leftTan   = MathF.Tan(eye.Fov.left   * Units.deg2rad);
-		float rightTan  = MathF.Tan(eye.Fov.right  * Units.deg2rad);
-		float topTan    = MathF.Tan(eye.Fov.top    * Units.deg2rad);
-		float bottomTan = MathF.Tan(eye.Fov.bottom * Units.deg2rad);
+		float leftTan   = MathF.Tan(eye.fov.left   * Units.deg2rad);
+		float rightTan  = MathF.Tan(eye.fov.right  * Units.deg2rad);
+		float topTan    = MathF.Tan(eye.fov.top    * Units.deg2rad);
+		float bottomTan = MathF.Tan(eye.fov.bottom * Units.deg2rad);
 		mat["eye_tans"] = new Vec4(leftTan, rightTan, topTan, bottomTan);
 
 		color.a = opacity;
@@ -274,19 +225,32 @@ class DemoEnvironmentDepth : ITest
 		UI.PopId();
 	}
 
+	void SwitchToMode(DemoMode newMode)
+	{
+		if (demoMode == newMode) return;
+
+		if (demoMode == DemoMode.Occlusion)
+			World.Occlusion = OcclusionCaps.None;
+
+		demoMode = newMode;
+
+		if (newMode == DemoMode.Occlusion)
+			World.Occlusion = OcclusionCaps.Depth | (handToggle ? OcclusionCaps.Hands : OcclusionCaps.None);
+	}
+
 	void DrawControls()
 	{
-		UI.WindowBegin("Environment Depth", ref controlsPose, new Vec2(35 * U.cm, 0));
+		UI.WindowBegin("Sensor Depth", ref controlsPose, new Vec2(35 * U.cm, 0));
 
-		UI.Label($"Available: {EnvironmentDepth.IsAvailable} | Running: {EnvironmentDepth.IsRunning}");
+		UI.Label($"Available: {Sensor.Depth.IsAvailable} | Running: {Sensor.Depth.IsRunning}");
 		if (hasFrame)
-			UI.Label($"Size: {latestFrame.Width}x{latestFrame.Height}  Near/Far: {latestFrame.NearZ:0.##}/{latestFrame.FarZ:0.##}");
+			UI.Label($"Size: {latestFrame.width}x{latestFrame.height}  Near/Far: {latestFrame.nearZ:0.##}/{latestFrame.farZ:0.##}");
 
 		// Mode selector
 		UI.HSeparator();
-		if (UI.Radio("Point Cloud", demoMode == DemoMode.PointCloud)) demoMode = DemoMode.PointCloud;
+		if (UI.Radio("Point Cloud", demoMode == DemoMode.PointCloud)) SwitchToMode(DemoMode.PointCloud);
 		UI.SameLine();
-		if (UI.Radio("Occlusion", demoMode == DemoMode.Occlusion)) demoMode = DemoMode.Occlusion;
+		if (UI.Radio("Occlusion", demoMode == DemoMode.Occlusion)) SwitchToMode(DemoMode.Occlusion);
 
 		UI.HSeparator();
 		if (demoMode == DemoMode.PointCloud)
@@ -307,40 +271,34 @@ class DemoEnvironmentDepth : ITest
 			{
 				sampleStep = (int)step;
 				if (hasFrame)
-					EnsurePointMesh(latestFrame.Width, latestFrame.Height, sampleStep);
+					EnsurePointMesh(latestFrame.width, latestFrame.height, sampleStep);
 			}
 
 			UI.HSeparator();
-			if (EnvironmentDepth.SupportsHandRemoval)
-			{
-				if (UI.Toggle("Hand Removal", ref handRemoval))
-					EnvironmentDepth.SetHandRemoval(handRemoval);
-				UI.SameLine();
-			}
+			if (UI.Toggle("Enable Hands", ref handToggle))
+				Sensor.Depth.SetCapabilities(handToggle ? SensorDepthCaps.None : SensorDepthCaps.HandRemoval);
+			UI.SameLine();
 			UI.Toggle("Color by Depth", ref colorByDepth);
+
+			UI.HSeparator();
+			if (!Sensor.Depth.IsRunning)
+			{
+				if (UI.Button("Start Depth Capture"))
+					Sensor.Depth.Start();
+			}
+			else
+			{
+				if (UI.Button("Stop Depth Capture"))
+					Sensor.Depth.Stop();
+			}
 		}
 		else // Occlusion
 		{
 			SliderRow("Model Scale", "modelscale", ref modelScale, 0.05f, 1.0f, 0, "{0:0.00}");
 
 			UI.HSeparator();
-			if (EnvironmentDepth.SupportsHandRemoval)
-			{
-				if (UI.Toggle("Hand Removal", ref handRemoval))
-					EnvironmentDepth.SetHandRemoval(handRemoval);
-			}
-		}
-
-		UI.HSeparator();
-		if (!EnvironmentDepth.IsRunning)
-		{
-			if (UI.Button("Start Depth Capture"))
-				EnvironmentDepth.Start();
-		}
-		else
-		{
-			if (UI.Button("Stop Depth Capture"))
-				EnvironmentDepth.Stop();
+			if (UI.Toggle("Hand Occlusion", ref handToggle))
+				World.Occlusion = OcclusionCaps.Depth | (handToggle ? OcclusionCaps.Hands : OcclusionCaps.None);
 		}
 
 		UI.WindowEnd();

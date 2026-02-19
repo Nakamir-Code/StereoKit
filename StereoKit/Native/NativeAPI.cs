@@ -788,6 +788,9 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_try_from_perception_anchor(IntPtr perception_spatial_anchor, out Pose out_pose);
 		[return: MarshalAs(UnmanagedType.Bool)]
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_raycast(Ray ray, out Ray out_intersection);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_set_occlusion(OcclusionCaps flags);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern OcclusionCaps world_get_occlusion();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern OcclusionCaps world_occlusion_capabilities();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         world_set_occlusion_enabled([MarshalAs(UnmanagedType.Bool)] bool enabled);
 		[return: MarshalAs(UnmanagedType.Bool)]
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         world_get_occlusion_enabled();
@@ -810,18 +813,20 @@ namespace StereoKit
 		///////////////////////////////////////////
 
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         environment_depth_available();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_available();
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         environment_depth_running();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_running();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern SensorDepthCaps sensor_depth_get_capabilities();
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         environment_depth_supports_hand_removal();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_start(SensorDepthCaps flags);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         sensor_depth_stop();
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         environment_depth_start();
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         environment_depth_stop();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_set_capabilities(SensorDepthCaps flags);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       sensor_depth_get_texture();
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         environment_depth_set_hand_removal([MarshalAs(UnmanagedType.Bool)] bool enabled);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_try_get_latest_frame(out SensorDepthFrame out_frame);
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         environment_depth_try_get_latest_frame(out EnvironmentDepthFrame out_frame);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_try_get_latest_data(out SensorDepthFrame out_frame, IntPtr out_data, out UIntPtr out_data_size, int view_index);
 
 		///////////////////////////////////////////
 

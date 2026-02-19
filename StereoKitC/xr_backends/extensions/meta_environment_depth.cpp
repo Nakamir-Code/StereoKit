@@ -7,15 +7,25 @@
 
 #include "../../asset_types/texture.h"
 #include "../../asset_types/texture_.h"
-#include "../../libraries/ferr_thread.h"
 #include "../../log.h"
 #include "../../sk_math.h"
 #include "../../sk_memory.h"
+#include "../../systems/sensor.h"
 #include "../openxr_platform.h"
 #include "ext_management.h"
 
 #include <stdint.h>
-#include <string.h>
+
+// XR_META_environment_depth v2: captureTime support.
+// Manually defined because the OpenXR headers are v1.
+#ifndef XR_TYPE_ENVIRONMENT_DEPTH_IMAGE_TIMESTAMP_META
+#define XR_TYPE_ENVIRONMENT_DEPTH_IMAGE_TIMESTAMP_META ((XrStructureType)1000291008)
+typedef struct XrEnvironmentDepthImageTimestampMETA {
+	XrStructureType    type;
+	const void*        next;
+	XrTime             captureTime;
+} XrEnvironmentDepthImageTimestampMETA;
+#endif
 
 #define XR_META_ENVIRONMENT_DEPTH_FUNCTIONS(X)             \
 	X(xrCreateEnvironmentDepthProviderMETA)                \
@@ -38,15 +48,15 @@ typedef struct xr_environment_depth_state_t {
 	bool                                 available;
 	bool                                 running;
 	bool                                 supports_hand_removal;
-	bool                                 hand_removal;
+	sensor_depth_caps_                   active_flags;
 	XrEnvironmentDepthProviderMETA       provider;
 	XrEnvironmentDepthSwapchainMETA      swapchain;
 	XrEnvironmentDepthSwapchainStateMETA swapchain_state;
 	uint32_t                             image_count;
 	XrSwapchainImageVulkanKHR*           images;
-	tex_t*                               textures;
-	ft_mutex_t                           latest_mutex;
-	environment_depth_frame_t            latest_frame;
+	tex_t                                depth_tex;
+	bool                                 depth_tex_initialized;
+	sensor_depth_frame_t                 latest_frame;
 	bool                                 has_latest_frame;
 } xr_environment_depth_state_t;
 static xr_environment_depth_state_t local = {};
@@ -110,12 +120,6 @@ xr_system_ xr_ext_meta_environment_depth_initialize(void*) {
 		return xr_system_fail;
 
 	local.supports_hand_removal = properties_depth.supportsHandRemoval == XR_TRUE;
-	local.latest_mutex = ft_mutex_create();
-	if (local.latest_mutex == nullptr) {
-		log_warn("XR_META_environment_depth: Failed to create mutex.");
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
 
 	XrEnvironmentDepthProviderCreateInfoMETA provider_info = { XR_TYPE_ENVIRONMENT_DEPTH_PROVIDER_CREATE_INFO_META };
 	result = xrCreateEnvironmentDepthProviderMETA(xr_session, &provider_info, &local.provider);
@@ -169,41 +173,11 @@ xr_system_ xr_ext_meta_environment_depth_initialize(void*) {
 		return xr_system_fail;
 	}
 
-	local.textures = sk_malloc_t(tex_t, local.image_count);
-	if (local.textures == nullptr) {
-		log_warn("XR_META_environment_depth: Failed to allocate texture array.");
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
-	memset(local.textures, 0, sizeof(tex_t) * local.image_count);
-
 	// Per the XR_META_environment_depth spec, the Vulkan swapchain format is
 	// VK_FORMAT_D16_UNORM and it is a 2D array texture with 2 layers
 	// (layer 0 = left eye, layer 1 = right eye)
-	const int32_t width       = (int32_t)local.swapchain_state.width;
-	const int32_t height      = (int32_t)local.swapchain_state.height;
-	const int32_t array_count = 2;
-	const int64_t native_fmt  = tex_fmt_to_native(tex_format_depth16);
-
-	log_infof("XR_META_environment_depth: swapchain images=%u size=%dx%d fmt=D16_UNORM(native=%lld) layers=%d",
-		local.image_count, width, height, (long long)native_fmt, array_count);
-
-	for (uint32_t i = 0; i < local.image_count; i++) {
-		local.textures[i] = tex_create(tex_type_image_nomips, tex_format_depth16);
-		if (local.textures[i] == nullptr) {
-			log_warn("XR_META_environment_depth: Failed to create texture for depth swapchain image.");
-			xr_ext_meta_environment_depth_destroy();
-			return xr_system_fail;
-		}
-
-		void* image_ptr = (void*)(uintptr_t)local.images[i].image;
-		tex_set_surface(local.textures[i], image_ptr, tex_type_image_nomips, native_fmt, width, height, array_count, 1, false);
-		if (tex_asset_state(local.textures[i]) < asset_state_loaded) {
-			log_warnf("XR_META_environment_depth: Failed to wrap depth image %u (VkImage=%p). Check format/layer compatibility.", i, image_ptr);
-			xr_ext_meta_environment_depth_destroy();
-			return xr_system_fail;
-		}
-	}
+	log_infof("XR_META_environment_depth: swapchain images=%u size=%dx%d fmt=D16_UNORM layers=2",
+		local.image_count, local.swapchain_state.width, local.swapchain_state.height);
 
 	local.available = true;
 	return xr_system_succeed;
@@ -215,25 +189,18 @@ void xr_ext_meta_environment_depth_destroy() {
 	if (local.running && local.provider != XR_NULL_HANDLE && xrStopEnvironmentDepthProviderMETA != nullptr) {
 		xrStopEnvironmentDepthProviderMETA(local.provider);
 	}
-	local.running = false;
+	local.running      = false;
+	local.active_flags = sensor_depth_caps_none;
 
-	if (local.latest_mutex != nullptr) {
-		ft_mutex_lock(local.latest_mutex);
-		if (local.has_latest_frame && local.latest_frame.texture != nullptr)
-			tex_release(local.latest_frame.texture);
-		local.latest_frame = {};
-		local.has_latest_frame = false;
-		ft_mutex_unlock(local.latest_mutex);
-	}
+	local.latest_frame     = {};
+	local.has_latest_frame = false;
 
-	if (local.textures != nullptr) {
-		for (uint32_t i = 0; i < local.image_count; i++) {
-			if (local.textures[i] != nullptr)
-				tex_release(local.textures[i]);
-		}
-		sk_free(local.textures);
-		local.textures = nullptr;
+	if (local.depth_tex != nullptr) {
+		tex_release(local.depth_tex);
+		local.depth_tex = nullptr;
 	}
+	local.depth_tex_initialized = false;
+
 	if (local.images != nullptr) {
 		sk_free(local.images);
 		local.images = nullptr;
@@ -254,7 +221,6 @@ void xr_ext_meta_environment_depth_destroy() {
 
 void xr_ext_meta_environment_depth_shutdown(void*) {
 	xr_ext_meta_environment_depth_destroy();
-	ft_mutex_destroy(&local.latest_mutex);
 	OPENXR_CLEAR_FN(XR_META_ENVIRONMENT_DEPTH_FUNCTIONS);
 	local = {};
 }
@@ -273,32 +239,16 @@ bool xr_ext_meta_environment_depth_running() {
 
 ///////////////////////////////////////////
 
-bool xr_ext_meta_environment_depth_supports_hand_removal() {
-	return local.supports_hand_removal;
+sensor_depth_caps_ xr_ext_meta_environment_depth_get_capabilities() {
+	sensor_depth_caps_ caps = sensor_depth_caps_none;
+	if (local.supports_hand_removal)
+		caps |= sensor_depth_caps_hand_removal;
+	return caps;
 }
 
 ///////////////////////////////////////////
 
-bool xr_ext_meta_environment_depth_set_hand_removal(bool32_t enabled) {
-	if (!local.available || local.provider == XR_NULL_HANDLE || !local.supports_hand_removal || xrSetEnvironmentDepthHandRemovalMETA == nullptr)
-		return false;
-
-	XrEnvironmentDepthHandRemovalSetInfoMETA hand_removal = { XR_TYPE_ENVIRONMENT_DEPTH_HAND_REMOVAL_SET_INFO_META };
-	hand_removal.enabled = enabled ? XR_TRUE : XR_FALSE;
-
-	XrResult result = xrSetEnvironmentDepthHandRemovalMETA(local.provider, &hand_removal);
-	if (XR_FAILED(result)) {
-		log_warnf("XR_META_environment_depth: xrSetEnvironmentDepthHandRemovalMETA failed: [%s]", openxr_string(result));
-		return false;
-	}
-
-	local.hand_removal = enabled != 0;
-	return true;
-}
-
-///////////////////////////////////////////
-
-bool xr_ext_meta_environment_depth_start() {
+bool xr_ext_meta_environment_depth_start(sensor_depth_caps_ flags) {
 	if (!local.available || local.provider == XR_NULL_HANDLE || xrStartEnvironmentDepthProviderMETA == nullptr)
 		return false;
 	if (local.running)
@@ -310,7 +260,21 @@ bool xr_ext_meta_environment_depth_start() {
 		return false;
 	}
 
-	local.running = true;
+	local.running      = true;
+	local.active_flags = sensor_depth_caps_none;
+
+	// Create the depth texture eagerly so callers can query format/dimensions
+	// immediately. The VkImage surface binding happens on the first frame.
+	if (local.depth_tex == nullptr) {
+		local.depth_tex = tex_create(tex_type_image_nomips, tex_format_depth16);
+		tex_set_id     (local.depth_tex, "default/tex_sensor_depth");
+		tex_set_sample (local.depth_tex, tex_sample_point);
+		tex_set_address(local.depth_tex, tex_address_clamp);
+		local.depth_tex_initialized = false;
+	}
+
+	// Apply initial flags
+	xr_ext_meta_environment_depth_set_caps(flags);
 	return true;
 }
 
@@ -324,7 +288,51 @@ void xr_ext_meta_environment_depth_stop() {
 	if (XR_FAILED(result)) {
 		log_warnf("XR_META_environment_depth: xrStopEnvironmentDepthProviderMETA failed: [%s]", openxr_string(result));
 	}
-	local.running = false;
+	local.running      = false;
+	local.active_flags = sensor_depth_caps_none;
+
+	local.latest_frame     = {};
+	local.has_latest_frame = false;
+}
+
+///////////////////////////////////////////
+
+bool xr_ext_meta_environment_depth_set_caps(sensor_depth_caps_ flags) {
+	if (!local.running) return false;
+
+	// Hand removal: apply if flag changed
+	bool want_hand_removal = (flags & sensor_depth_caps_hand_removal) != 0;
+	bool have_hand_removal = (local.active_flags & sensor_depth_caps_hand_removal) != 0;
+	if (want_hand_removal != have_hand_removal && local.supports_hand_removal && xrSetEnvironmentDepthHandRemovalMETA != nullptr) {
+		XrEnvironmentDepthHandRemovalSetInfoMETA info = { XR_TYPE_ENVIRONMENT_DEPTH_HAND_REMOVAL_SET_INFO_META };
+		info.enabled = want_hand_removal ? XR_TRUE : XR_FALSE;
+		XrResult result = xrSetEnvironmentDepthHandRemovalMETA(local.provider, &info);
+		if (XR_FAILED(result)) {
+			log_warnf("XR_META_environment_depth: xrSetEnvironmentDepthHandRemovalMETA failed: [%s]", openxr_string(result));
+		}
+	}
+
+	local.active_flags = flags;
+	return true;
+}
+
+///////////////////////////////////////////
+
+tex_t xr_ext_meta_environment_depth_get_texture() {
+	return local.depth_tex;
+}
+
+///////////////////////////////////////////
+
+bool xr_ext_meta_environment_depth_try_get_latest(sensor_depth_frame_t* out_frame) {
+	if (out_frame == nullptr || !local.available)
+		return false;
+
+	if (!local.has_latest_frame)
+		return false;
+
+	*out_frame = local.latest_frame;
+	return true;
 }
 
 ///////////////////////////////////////////
@@ -337,7 +345,13 @@ void xr_ext_meta_environment_depth_update_frame(XrTime display_time) {
 	acquire_info.space       = xr_app_space;
 	acquire_info.displayTime = display_time;
 
+	// Chain the v2 timestamp struct. If the runtime is v1, it will be ignored.
+	// Initialize captureTime to 0 per spec so we can detect if it was populated.
+	XrEnvironmentDepthImageTimestampMETA timestamp_info = { XR_TYPE_ENVIRONMENT_DEPTH_IMAGE_TIMESTAMP_META };
+	timestamp_info.captureTime = 0;
+
 	XrEnvironmentDepthImageMETA image_info = { XR_TYPE_ENVIRONMENT_DEPTH_IMAGE_META };
+	image_info.next     = &timestamp_info;
 	image_info.views[0] = { XR_TYPE_ENVIRONMENT_DEPTH_IMAGE_VIEW_META };
 	image_info.views[1] = { XR_TYPE_ENVIRONMENT_DEPTH_IMAGE_VIEW_META };
 
@@ -349,52 +363,45 @@ void xr_ext_meta_environment_depth_update_frame(XrTime display_time) {
 		return;
 	}
 
-	if (image_info.swapchainIndex >= local.image_count || local.textures == nullptr || local.textures[image_info.swapchainIndex] == nullptr)
+	if (image_info.swapchainIndex >= local.image_count || local.images == nullptr) {
+		log_warnf("XR_META_environment_depth: invalid swapchain index %u (image_count=%u, images=%p)", image_info.swapchainIndex, local.image_count, (void*)local.images);
 		return;
+	}
 
-	environment_depth_frame_t frame = {};
-	frame.texture         = local.textures[image_info.swapchainIndex];
-	frame.display_time    = display_time;
-	frame.width           = local.swapchain_state.width;
-	frame.height          = local.swapchain_state.height;
-	frame.near_z          = image_info.nearZ;
-	frame.far_z           = image_info.farZ;
-	frame.left.pose       = xr_to_pose(image_info.views[0].pose);
-	frame.left.fov        = xr_to_fov (image_info.views[0].fov );
-	frame.right.pose      = xr_to_pose(image_info.views[1].pose);
-	frame.right.fov       = xr_to_fov (image_info.views[1].fov );
+	const int32_t width       = (int32_t)local.swapchain_state.width;
+	const int32_t height      = (int32_t)local.swapchain_state.height;
+	const int32_t array_count = 2;
+	const int64_t native_fmt  = tex_fmt_to_native(tex_format_depth16);
+	void*         image_ptr   = (void*)(uintptr_t)local.images[image_info.swapchainIndex].image;
 
-	ft_mutex_lock(local.latest_mutex);
-	if (local.has_latest_frame && local.latest_frame.texture != nullptr)
-		tex_release(local.latest_frame.texture);
-	local.latest_frame = frame;
+	if (!local.depth_tex_initialized) {
+		tex_set_surface(local.depth_tex, image_ptr, tex_type_image_nomips, native_fmt, width, height, array_count, 1, false);
+		local.depth_tex_initialized = true;
+	} else {
+		skr_tex_external_update_t update = {};
+		update.image          = (VkImage)image_ptr;
+		update.view           = VK_NULL_HANDLE;
+		update.current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		skr_tex_update_external(&local.depth_tex->gpu_tex, update);
+	}
+
+	// Build current frame metadata (GPU texture always matches these)
+	sensor_depth_frame_t frame = {};
+	frame.display_time      = display_time;
+	frame.capture_time      = timestamp_info.captureTime;
+	frame.width             = local.swapchain_state.width;
+	frame.height            = local.swapchain_state.height;
+	frame.near_z            = image_info.nearZ;
+	frame.far_z             = image_info.farZ;
+	frame.views[0].pose     = xr_to_pose(image_info.views[0].pose);
+	frame.views[0].fov      = xr_to_fov (image_info.views[0].fov );
+	frame.views[1].pose     = xr_to_pose(image_info.views[1].pose);
+	frame.views[1].fov      = xr_to_fov (image_info.views[1].fov );
+
+	local.latest_frame     = frame;
 	local.has_latest_frame = true;
-	if (frame.texture != nullptr)
-		tex_addref(frame.texture);
-	ft_mutex_unlock(local.latest_mutex);
-}
 
-///////////////////////////////////////////
-
-bool xr_ext_meta_environment_depth_try_get_latest(environment_depth_frame_t* out_frame) {
-	if (out_frame == nullptr || !local.available)
-		return false;
-
-	environment_depth_frame_t frame = {};
-	bool has_frame = false;
-
-	ft_mutex_lock(local.latest_mutex);
-	has_frame = local.has_latest_frame;
-	frame     = local.latest_frame;
-	if (has_frame && frame.texture != nullptr)
-		tex_addref(frame.texture);
-	ft_mutex_unlock(local.latest_mutex);
-
-	if (!has_frame)
-		return false;
-
-	*out_frame = frame;
-	return true;
+	sensor_readback_update(local.depth_tex, (int32_t)frame.width, (int32_t)frame.height, array_count, &frame, sizeof(frame));
 }
 
 ///////////////////////////////////////////
