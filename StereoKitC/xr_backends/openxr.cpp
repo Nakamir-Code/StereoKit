@@ -408,6 +408,10 @@ bool openxr_blank_frame() {
 	xr_check(xrWaitFrame(xr_session, &wait_info, &frame_state),
 		"blank xrWaitFrame");
 
+	// Update time, this is used for a variety of queries, so keeping it
+	// up-to-date even on blank frames during init is helpful.
+	xr_time = frame_state.predictedDisplayTime;
+
 	XrFrameBeginInfo begin_info = { XR_TYPE_FRAME_BEGIN_INFO };
 	xr_check(xrBeginFrame(xr_session, &begin_info),
 		"blank xrBeginFrame");
@@ -751,6 +755,7 @@ bool openxr_poll_events() {
 					result = false;
 				} else {
 					xr_has_session = true;
+					xr_time        = changed->time;
 					log_diag("OpenXR session began.");
 
 					// FoV normally updates right before drawing, but we need
