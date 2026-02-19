@@ -198,15 +198,7 @@
       "description": "Build for Linux",
       "hidden":      true,
       "generator":   "Ninja",
-      "cacheVariables": {
-        "CMAKE_SYSTEM_NAME":         "Linux",
-        "CMAKE_C_COMPILER":          "clang",
-        "CMAKE_CXX_COMPILER":        "clang++",
-        "CMAKE_LINKER":              "lld",
-        "CMAKE_EXE_LINKER_FLAGS":    "-fuse-ld=lld",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld",
-        "CMAKE_MODULE_LINKER_FLAGS": "-fuse-ld=lld"
-      },
+      "toolchainFile":  "${sourceDir}/cmake/LinuxClangToolchain.cmake",
       "condition": {
         "type": "equals",
         "lhs":  "${hostSystemName}",

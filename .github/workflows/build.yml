@@ -171,7 +171,7 @@ jobs:
     - name: Install Prerequisites
       run: |
         sudo apt-get update
-        sudo apt-get install clang lld ninja-build libx11-dev libxfixes-dev libegl-dev libgbm-dev libfontconfig-dev
+        sudo apt-get install clang llvm lld ninja-build libx11-dev libxfixes-dev libfontconfig-dev
     
     - name: Set Version
       shell: pwsh

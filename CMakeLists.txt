@@ -129,7 +129,6 @@ elseif(EMSCRIPTEN)
 elseif (UNIX)
   set(LINUX_LIBS
     Threads::Threads
-    gbm
     X11
     Xfixes
     fontconfig )
