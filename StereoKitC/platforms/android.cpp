@@ -77,33 +77,34 @@ bool platform_win_create_surface(window_t* win);
 
 ///////////////////////////////////////////
 
-// When consumed as a static library, the user's app will need to provide its
-// own JNI_OnLoad function, which will then conflict with this one. So we only
-// provide this for shared libraries.
-#if defined(SK_BUILD_SHARED)
-
-extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
-	local_persist.vm = vm;
-	return JNI_VERSION_1_6;
-}
-extern "C" jint JNI_OnLoad_L(JavaVM* vm, void* reserved) {
-	return JNI_OnLoad(vm, reserved);
-}
-
-#endif
-
-///////////////////////////////////////////
-
 bool platform_impl_init() {
 	const sk_settings_t* settings = sk_get_settings_ref();
 	local = {};
 
 	local.activity   = (jobject)settings->android_activity;
-	if (local_persist.vm == nullptr)
-		local_persist.vm = (JavaVM*)settings->android_java_vm;
+	local_persist.vm = (JavaVM*)settings->android_java_vm;
+
+	// If the VM wasn't provided via settings, find it via
+	// JNI_GetCreatedJavaVMs. This symbol isn't available at link time in
+	// the NDK, so we resolve it at runtime from libnativehelper.so.
+	//
+	// NOTE: libnativehelper.so is only in the public linker namespace on
+	// API 31+. On API 24-30 this dlopen may fail, making the VM null. In
+	// that case, the caller should set android_java_vm in sk_settings_t
+	// (or SK.AndroidJavaVM in C#) before initialization.
+	if (local_persist.vm == nullptr) {
+		typedef jint (*pfn_JNI_GetCreatedJavaVMs)(JavaVM**, jsize, jsize*);
+		void*                     lib    = dlopen("libnativehelper.so", RTLD_NOW);
+		pfn_JNI_GetCreatedJavaVMs getVMs = (pfn_JNI_GetCreatedJavaVMs)dlsym(lib ? lib : RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
+
+		jsize count = 0;
+		if (getVMs) getVMs(&local_persist.vm, 1, &count);
+	}
 
 	if (local_persist.vm == nullptr || local.activity == nullptr) {
-		log_fail_reason(95, log_error, "Couldn't find Android's Java VM or Activity, you should load the StereoKitC library with something like Xamarin's JavaSystem.LoadLibrary, or manually assign it using sk_set_settings()");
+		log_fail_reasonf(95, log_error, "Couldn't find Android's Java VM (%s) or Activity (%s), assign these using sk_set_settings().",
+			local_persist.vm ? "found" : "missing",
+			local.activity   ? "found" : "missing");
 		return false;
 	}
 
