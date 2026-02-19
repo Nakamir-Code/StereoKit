@@ -27,6 +27,19 @@ namespace StereoKit
 			public static bool IsRunning
 				=> NativeAPI.sensor_depth_running();
 
+			/// <summary>The system-managed depth texture. Available once the
+			/// depth sensor has been started. Dimensions and format are
+			/// valid after the first frame.</summary>
+			public static Tex Texture
+			{
+				get {
+					IntPtr ptr = NativeAPI.sensor_depth_get_texture();
+					if (ptr == IntPtr.Zero) return null;
+					NativeAPI.tex_addref(ptr);
+					return new Tex(ptr);
+				}
+			}
+
 			/// <summary>Returns a bitmask of SensorDepthCaps indicating
 			/// which optional features are supported on the current platform
 			/// and backend.</summary>
@@ -46,10 +59,7 @@ namespace StereoKit
 
 			/// <summary>Stops the depth provider.</summary>
 			public static void Stop()
-			{
-				NativeAPI.sensor_depth_stop();
-				Texture = null;
-			}
+				=> NativeAPI.sensor_depth_stop();
 
 			/// <summary>Updates the active capabilities while the sensor is running.
 			/// Can enable or disable features like hand removal or CPU
@@ -59,27 +69,6 @@ namespace StereoKit
 			/// <returns>True if the sensor is running and capabilities were applied.</returns>
 			public static bool SetCapabilities(SensorDepthCaps capabilities)
 				=> NativeAPI.sensor_depth_set_capabilities(capabilities);
-
-			/// <summary>The system-managed depth texture. Available once the
-			/// depth sensor has been started. Dimensions and format are
-			/// valid after the first frame. Do not dispose this texture;
-			/// it is owned by the native system.</summary>
-			public static Tex Texture
-			{
-				get {
-					if (field is null)
-					{
-						IntPtr ptr = NativeAPI.sensor_depth_get_texture();
-						if (ptr != IntPtr.Zero)
-						{
-							NativeAPI.tex_addref(ptr);
-							field = new Tex(ptr);
-						}
-					}
-					return field;
-				}
-				private set => field = value;
-			}
 
 			/// <summary>Retrieves the latest per-frame depth metadata.
 			/// </summary>
@@ -130,7 +119,7 @@ namespace StereoKit
 				return result;
 			}
 
-			static int FormatBytesPerPixel(TexFormat format) => format switch
+			private static int FormatBytesPerPixel(TexFormat format) => format switch
 			{
 				TexFormat.Depth16   => 2,
 				TexFormat.Depth32   => 4,

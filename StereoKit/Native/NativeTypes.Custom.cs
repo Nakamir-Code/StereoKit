@@ -569,5 +569,4 @@ namespace StereoKit
 		[Obsolete("Use Pivot instead")]
 		public static implicit operator Pivot(TextAlign a) => (Pivot)a;
 	}
-
 }
