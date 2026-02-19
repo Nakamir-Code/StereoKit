@@ -198,7 +198,6 @@
       "description": "Build for Linux",
       "hidden":      true,
       "generator":   "Ninja",
-      "toolchainFile":  "${sourceDir}/cmake/LinuxClangToolchain.cmake",
       "condition": {
         "type": "equals",
         "lhs":  "${hostSystemName}",
@@ -206,10 +205,17 @@
       }
     },
     {
+      "name":        "Linux_x64",
+      "description": "Build for Linux x64 with clang/LLVM toolchain",
+      "hidden":      true,
+      "inherits":    "Linux",
+      "toolchainFile":  "${sourceDir}/cmake/LinuxClangToolchain.cmake"
+    },
+    {
       "name":        "Linux_x64_Release",
       "description": "Release build for Linux x64",
       "hidden":      false,
-      "inherits":    "Linux",
+      "inherits":    "Linux_x64",
       "binaryDir":   "${sourceDir}/bin/intermediate/Linux_x64_Release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
@@ -227,7 +233,7 @@
       "name":        "Linux_x64_Debug",
       "description": "Debug build for Linux x64",
       "hidden":      false,
-      "inherits":    "Linux",
+      "inherits":    "Linux_x64",
       "binaryDir":   "${sourceDir}/bin/intermediate/Linux_x64_Debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
