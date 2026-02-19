@@ -137,7 +137,7 @@ elseif (UNIX)
   set(THREADS_PREFER_PTHREAD_FLAG ON)
   find_package(Threads REQUIRED)
 
-  if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+  if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
     add_compile_options(-mavx -mf16c)
   endif()
 
