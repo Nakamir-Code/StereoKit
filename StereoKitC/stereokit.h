@@ -2125,7 +2125,7 @@ SK_API float        sound_inst_get_intensity(sound_inst_t sound_inst);
 
 SK_API int32_t      mic_device_count     (void);
 SK_API const char*  mic_device_name      (int32_t index);
-SK_API bool32_t     mic_start            (const char *device_name sk_default(nullptr));
+SK_API bool32_t     mic_start            (const char *device_name sk_default(nullptr), int32_t input_preset sk_default(0));
 SK_API void         mic_stop             (void);
 SK_API sound_t      mic_get_stream       (void);
 SK_API bool32_t     mic_is_recording     (void);

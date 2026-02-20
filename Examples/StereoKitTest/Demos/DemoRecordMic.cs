@@ -18,6 +18,7 @@ class DemoRecordMic : ITest
 	/// and use that to create a sound for playback.
 	///
 	/// ![Audio recording window]({{site.screen_url}}/RecordAudioSnippet.jpg)
+	int         inputPreset;
 	Sound       recordedSound   = null;
 	List<float> recordedData    = new List<float>();
 	float[]     sampleBuffer    = null;
@@ -36,7 +37,7 @@ class DemoRecordMic : ITest
 			{
 				// Clear out our data, and start up the mic!
 				recordedData.Clear();
-				recording = Microphone.Start();
+				recording = Microphone.Start(inputPreset: inputPreset);
 				if (!recording)
 					Log.Warn("Recording failed to start!");
 			}
@@ -115,6 +116,19 @@ class DemoRecordMic : ITest
 				micDeviceActive = device;
 			}
 		}
+
+#if ANDROID
+		UI.HSeparator();
+		UI.Label("Input Preset");
+		// More info about each preset can be found below - note that miniaudio supports all non-system presets.
+		// https://developer.android.com/reference/android/media/MediaRecorder.AudioSource
+		string[] presetNames = ["Default", "Generic", "Camcorder", "Voice Recognition", "Voice Communication", "Unprocessed", "Voice Performance"];
+		for (int i = 0; i < presetNames.Length; i++)
+		{
+			if (UI.Radio(presetNames[i], inputPreset == i, size))
+				inputPreset = i;
+		}
+#endif
 
 		UI.WindowEnd();
 	}
