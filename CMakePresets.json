@@ -186,15 +186,6 @@
       "description": "Build for Linux",
       "hidden":      true,
       "generator":   "Ninja",
-      "cacheVariables": {
-        "CMAKE_SYSTEM_NAME":         "Linux",
-        "CMAKE_C_COMPILER":          "clang",
-        "CMAKE_CXX_COMPILER":        "clang++",
-        "CMAKE_LINKER":              "lld",
-        "CMAKE_EXE_LINKER_FLAGS":    "-fuse-ld=lld",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld",
-        "CMAKE_MODULE_LINKER_FLAGS": "-fuse-ld=lld"
-      },
       "condition": {
         "type": "equals",
         "lhs":  "${hostSystemName}",
@@ -202,10 +193,21 @@
       }
     },
     {
+      "name":        "Linux_x64",
+      "description": "Build for Linux x64 with clang/LLVM toolchain",
+      "hidden":      true,
+      "inherits":    "Linux",
+      "toolchainFile":  "${sourceDir}/cmake/LinuxClangToolchain.cmake"
+    },
+    {
       "name":        "Linux_x64_Release",
       "description": "Release build for Linux x64",
-      "inherits":    ["Linux", "BuildType_Release"],
-      "binaryDir":   "${sourceDir}/bin/intermediate/Linux_x64_Release"
+      "hidden":      false,
+      "inherits":    "Linux_x64",
+      "binaryDir":   "${sourceDir}/bin/intermediate/Linux_x64_Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     },
     {
       "name":        "Linux_x64_Release_Fast",
@@ -215,8 +217,12 @@
     {
       "name":        "Linux_x64_Debug",
       "description": "Debug build for Linux x64",
-      "inherits":    ["Linux", "BuildType_Debug"],
-      "binaryDir":   "${sourceDir}/bin/intermediate/Linux_x64_Debug"
+      "hidden":      false,
+      "inherits":    "Linux_x64",
+      "binaryDir":   "${sourceDir}/bin/intermediate/Linux_x64_Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     },
     {
       "name":        "Linux_x64_Debug_Fast",
@@ -224,16 +230,20 @@
       "binaryDir":   "${sourceDir}/bin/intermediate/Linux_x64_Fast"
     },
     {
-      "name":      "Linux_Arm64_Base",
-      "inherits":  "Linux",
-      "hidden":    true,
+      "name":        "Linux_Arm64",
+      "description": "Cross-compile for Linux Arm64",
+      "hidden":      true,
+      "inherits":    "Linux",
+      "toolchainFile": "${sourceDir}/cmake/LinuxArm64Toolchain.cmake"
+    },
+    {
+      "name":        "Linux_Arm64_Release",
+      "description": "Release build for Linux Arm64",
+      "hidden":      false,
+      "inherits":    "Linux_Arm64",
+      "binaryDir":   "${sourceDir}/bin/intermediate/Linux_ARM64_Release",
       "cacheVariables": {
-        "CMAKE_C_COMPILER":          "aarch64-linux-gnu-gcc",
-        "CMAKE_CXX_COMPILER":        "aarch64-linux-gnu-g++",
-        "CMAKE_SYSTEM_PROCESSOR":    "arm64",
-        "CMAKE_EXE_LINKER_FLAGS":    null,
-        "CMAKE_SHARED_LINKER_FLAGS": null,
-        "CMAKE_MODULE_LINKER_FLAGS": null
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -258,14 +268,11 @@
     {
       "name":        "Linux_Arm64_Debug",
       "description": "Debug build for Linux Arm64",
-      "inherits":    ["Linux_Arm64_Base", "BuildType_Debug"],
+      "hidden":      false,
+      "inherits":    "Linux_Arm64",
       "binaryDir":   "${sourceDir}/bin/intermediate/Linux_Arm64_Debug",
       "cacheVariables": {
-        "CMAKE_LINKER":           "aarch64-linux-gnu-ld",
-        "CMAKE_OBJCOPY":          "aarch64-linux-gnu-objcopy",
-        "CMAKE_RANLIB":           "aarch64-linux-gnu-ranlib",
-        "CMAKE_SIZE":             "aarch64-linux-gnu-size",
-        "CMAKE_STRIP":            "aarch64-linux-gnu-strip"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {

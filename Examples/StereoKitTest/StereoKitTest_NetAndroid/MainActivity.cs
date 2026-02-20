@@ -45,10 +45,13 @@ public class MainActivity : Activity, ISurfaceHolderCallback2
 		if (running) return;
 		running = true;
 
-		// Before anything else, give StereoKit the Activity. This should
-		// be set before any other SK calls, otherwise native library
-		// loading may fail.
+		// Before anything else, give StereoKit the Activity and VM. These
+		// should be set before any other SK calls, otherwise native
+		// library loading may fail.
 		SK.AndroidActivity = this;
+		// This is optional, but helps with compatibility on older devices,
+		// Android API 30 and older.
+		SK.AndroidJavaVM   = Java.Interop.JniEnvironment.Runtime.InvocationPointer;
 
 		// Task.Run will eat exceptions, but Thread.Start doesn't seem to.
 		new Thread(InvokeStereoKit).Start();

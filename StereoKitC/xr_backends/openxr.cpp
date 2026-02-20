@@ -411,6 +411,10 @@ bool openxr_blank_frame() {
 	xr_check(xrWaitFrame(xr_session, &wait_info, &frame_state),
 		"blank xrWaitFrame");
 
+	// Update time, this is used for a variety of queries, so keeping it
+	// up-to-date even on blank frames during init is helpful.
+	xr_time = frame_state.predictedDisplayTime;
+
 	XrFrameBeginInfo begin_info = { XR_TYPE_FRAME_BEGIN_INFO };
 	xr_check(xrBeginFrame(xr_session, &begin_info),
 		"blank xrBeginFrame");
@@ -763,13 +767,19 @@ bool openxr_poll_events() {
 					result = false;
 				} else {
 					xr_has_session = true;
+					xr_time        = changed->time;
 					log_diag("OpenXR session began.");
 
-					// FoV normally updates right before drawing, but we need it to
-					// be available as soon as the session begins, for apps that
-					// are listening to sk_app_focus changing to determine if FoV
-					// is ready.
+					// FoV normally updates right before drawing, but we need
+					// it to be available as soon as the session begins, for
+					// apps that are listening to sk_app_focus changing to
+					// determine if FoV is ready.
 					openxr_views_update_fov(changed->time);
+
+					// After session begins, we want to break out of the
+					// polling loop so we can call ext_management_evt_session_ready
+					// before processing any more events!
+					return result;
 				}
 			} break;
 			case XR_SESSION_STATE_SYNCHRONIZED: break; // We're connected to a session, but not visible to users yet.
