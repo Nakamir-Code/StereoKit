@@ -168,8 +168,6 @@ struct render_state_t {
 	color128                clear_col;
 	render_list_t           list_primary;
 	float                   viewport_scale;
-	float                   scale;
-	int32_t                 multisample;
 	render_layer_           primary_filter;
 	render_layer_           capture_filter;
 	bool                    use_capture_filter;
@@ -223,8 +221,6 @@ bool render_init() {
 	local.clear_col             = color128{0,0,0,0};
 	local.list_primary          = nullptr;
 	local.viewport_scale        = 1;
-	local.scale                 = sk_get_settings_ref()->render_scaling;
-	local.multisample           = sk_get_settings_ref()->render_multisample;
 	local.primary_filter        = render_layer_all_first_person;
 	local.capture_filter        = render_layer_all_first_person;
 	local.list_active           = nullptr;
@@ -558,13 +554,13 @@ void render_set_filter(render_layer_ layer_filter) {
 ///////////////////////////////////////////
 
 void render_set_scaling(float texture_scale) {
-	local.scale = fminf(2, fmaxf(0.2f, texture_scale));
+	sk_get_settings_ref_mut()->render_scaling = fminf(2, fmaxf(0.2f, texture_scale));
 }
 
 ///////////////////////////////////////////
 
 float render_get_scaling() {
-	return local.scale;
+	return sk_get_settings_ref()->render_scaling;
 }
 
 ///////////////////////////////////////////
@@ -582,16 +578,18 @@ float render_get_viewport_scaling(void) {
 ///////////////////////////////////////////
 
 void render_set_multisample(int32_t display_tex_multisample) {
-	if      (display_tex_multisample <= 1)  local.multisample = 1;
-	else if (display_tex_multisample <= 3)  local.multisample = 2;
-	else if (display_tex_multisample <= 7)  local.multisample = 4;
-	else                                    local.multisample = 8;
+	int32_t val;
+	if      (display_tex_multisample <= 1)  val = 1;
+	else if (display_tex_multisample <= 3)  val = 2;
+	else if (display_tex_multisample <= 7)  val = 4;
+	else                                    val = 8;
+	sk_get_settings_ref_mut()->render_multisample = val;
 }
 
 ///////////////////////////////////////////
 
 int32_t render_get_multisample() {
-	return local.multisample;
+	return sk_get_settings_ref()->render_multisample;
 }
 
 ///////////////////////////////////////////
