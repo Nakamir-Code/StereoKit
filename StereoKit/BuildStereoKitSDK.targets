@@ -101,6 +101,7 @@
 		<AndroidNativeLibrary Visible="false" CopyToOutputDirectory="PreserveNewest" Abi="$(SKSDKBuildAbi)" Include="$(SKSDKLibPath)" />
 		<AndroidNativeLibrary Visible="false" CopyToOutputDirectory="PreserveNewest" Abi="$(SKSDKBuildAbi)" Include="$(SKSDKBinDir)$(SKOpenXRLoader.ToLower())/*.so" />
 		<AndroidNativeLibrary Visible="false" CopyToOutputDirectory="PreserveNewest" Abi="$(SKSDKBuildAbi)" Include="$(SKOpenXRLoaderFolder)/$(SKOpenXRLoader)/$(SKSDKBuildMode.ToLower())/*.so" />
+		<AndroidJavaLibrary   Visible="false" Include="$(SKSDKFolder)\bin\distribute\bin\Android\sk_app.jar" />
 	</ItemGroup>
 
 	<!-- Full rebuilds of this project should also be full rebuilds of StereoKit. -->

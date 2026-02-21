@@ -11,11 +11,16 @@
 	</Target>
 
 	<Target Name="StereoKit_ContentCopy" AfterTargets="StereoKit_ContentFind;StereoKit_ShaderCopy" BeforeTargets="AssignTargetPaths">
-		<ItemGroup>
+		<ItemGroup Condition="'$(SKBuildPlatform)'!='Android'">
 			<Content Include="%(SKContent.Identity)">
 				<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 				<Link>$(SKAssetDestination)/%(SKContent.RecursiveDir)%(SKContent.Filename)%(SKContent.Extension)</Link>
 			</Content>
+		</ItemGroup>
+		<ItemGroup Condition="'$(SKBuildPlatform)'=='Android'">
+			<AndroidAsset Include="%(SKContent.Identity)">
+				<Link>$(SKAssetDestination)/%(SKContent.RecursiveDir)%(SKContent.Filename)%(SKContent.Extension)</Link>
+			</AndroidAsset>
 		</ItemGroup>
 	</Target>
 </Project>

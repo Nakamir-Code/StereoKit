@@ -53,4 +53,9 @@
 		</AndroidNativeLibrary>
 	</ItemGroup>
 
+	<!-- Include sk_app Java classes for Android (file dialogs, activity results) -->
+	<ItemGroup>
+		<AndroidJavaLibrary Include="$(MSBuildThisFileDirectory)sk_app.jar" Condition="Exists('$(MSBuildThisFileDirectory)sk_app.jar')" />
+	</ItemGroup>
+
 </Project>

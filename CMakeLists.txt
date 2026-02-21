@@ -805,6 +805,13 @@ if(SK_DISTRIBUTE)
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}/${SK_ARCH}/$<CONFIG>/standard"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:openxr_loader>" "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}/${SK_ARCH}/$<CONFIG>/standard/$<TARGET_FILE_NAME:openxr_loader>" )
   endif()
+  # Copy sk_app.jar on Android (Java classes for file dialogs, activity results)
+  if (ANDROID AND TARGET sk_app_jar)
+    add_custom_command(TARGET StereoKitC POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${sk_app_BINARY_DIR}/sk_app.jar" "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}/sk_app.jar"
+      COMMENT "Copying sk_app.jar to distribute folder" )
+  endif()
   # Copy MoltenVK on macOS (required for Vulkan/Metal translation)
   if (APPLE AND TARGET MoltenVK)
     add_custom_command(TARGET StereoKitC POST_BUILD
