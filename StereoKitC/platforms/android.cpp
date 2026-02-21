@@ -14,11 +14,7 @@
 
 // JNI types must be available before Vulkan Android / OpenXR Android headers
 #include <jni.h>
-#include <android/native_activity.h>
 #include <android/native_window_jni.h>
-
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
 #include <android/font_matcher.h>
 #include <android/font.h>
 
@@ -30,20 +26,14 @@
 namespace sk {
 
 // These are variables that are set outside of the normal initialization cycle,
-// such as the vm from when the library loads, or window change events from the
-// main activity.
+// such as window change events from the main activity.
 struct platform_android_persistent_state_t {
-	JavaVM        *vm;
 	ANativeWindow *next_window;
 	jobject        next_window_xam;
 	bool           next_win_ready;
 };
 
 struct platform_android_state_t {
-	JNIEnv        *env;
-	jobject        activity;
-	AAssetManager *asset_manager;
-	jobject        asset_manager_obj;
 	ANativeWindow *window;
 };
 
@@ -52,79 +42,48 @@ static platform_android_persistent_state_t local_persist = {};
 
 ///////////////////////////////////////////
 
+void android_process_pending_window() {
+	if (!local_persist.next_win_ready) return;
 
-void platform_win_resize        (platform_win_t window_id, int32_t width, int32_t height);
-bool platform_win_create_surface(window_t* win);
+	ANativeWindow *prev_window = local.window;
+
+	// Xamarin windows arrive as a jobject Surface that needs JNI conversion
+	if (local_persist.next_window_xam != nullptr) {
+		JNIEnv *env = (JNIEnv*)ska_android_get_jni_env();
+		if (env)
+			local_persist.next_window = ANativeWindow_fromSurface(env, local_persist.next_window_xam);
+		local_persist.next_window_xam = nullptr;
+	}
+
+	local.window = local_persist.next_window;
+	local_persist.next_win_ready = false;
+	local_persist.next_window    = nullptr;
+
+	// Forward window lifecycle to sk_app
+	if (prev_window && !local.window)
+		ska_android_on_window_destroyed();
+	if (local.window && local.window != prev_window)
+		ska_android_on_window_created(local.window);
+}
 
 ///////////////////////////////////////////
 
 bool platform_impl_init() {
-	const sk_settings_t* settings = sk_get_settings_ref();
 	local = {};
-
-	local.activity   = (jobject)settings->android_activity;
-	local_persist.vm = (JavaVM*)settings->android_java_vm;
-
-	// If the VM wasn't provided via settings, find it via
-	// JNI_GetCreatedJavaVMs. This symbol isn't available at link time in
-	// the NDK, so we resolve it at runtime from libnativehelper.so.
-	//
-	// NOTE: libnativehelper.so is only in the public linker namespace on
-	// API 31+. On API 24-30 this dlopen may fail, making the VM null. In
-	// that case, the caller should set android_java_vm in sk_settings_t
-	// (or SK.AndroidJavaVM in C#) before initialization.
-	if (local_persist.vm == nullptr) {
-		typedef jint (*pfn_JNI_GetCreatedJavaVMs)(JavaVM**, jsize, jsize*);
-		void*                     lib    = dlopen("libnativehelper.so", RTLD_NOW);
-		pfn_JNI_GetCreatedJavaVMs getVMs = (pfn_JNI_GetCreatedJavaVMs)dlsym(lib ? lib : RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
-
-		jsize count = 0;
-		if (getVMs) getVMs(&local_persist.vm, 1, &count);
-	}
-
-	if (local_persist.vm == nullptr || local.activity == nullptr) {
-		log_fail_reasonf(95, log_error, "Couldn't find Android's Java VM (%s) or Activity (%s), assign these using sk_set_settings().",
-			local_persist.vm ? "found" : "missing",
-			local.activity   ? "found" : "missing");
-		return false;
-	}
-
-	// Get the java environment from the VM, and ensure it's attached to this
-	// thread
-	int result = local_persist.vm->GetEnv((void **)&local.env, JNI_VERSION_1_6);
-	if (result == JNI_EDETACHED) {
-		if (local_persist.vm->AttachCurrentThread(&local.env, nullptr) != JNI_OK) {
-			log_fail_reason(95, log_error, "Couldn't attach the Java Environment to the current thread!");
-			return false;
-		}
-	} else if (result != JNI_OK) {
-		log_fail_reason(95, log_error, "Couldn't get the Java Environment from the VM, this needs to be called from the main thread.");
-		return false;
-	}
-
-	// Get the asset manager for loading files
-	// from https://stackoverflow.com/questions/22436259/android-ndk-why-is-aassetmanager-open-returning-null/22436260#22436260
-	jclass    activity_class           = local.env->GetObjectClass(local.activity);
-	jmethodID activity_class_getAssets = local.env->GetMethodID(activity_class, "getAssets", "()Landroid/content/res/AssetManager;");
-	jobject   asset_manager            = local.env->CallObjectMethod(local.activity, activity_class_getAssets); // activity.getAssets();
-	local.asset_manager_obj            = local.env->NewGlobalRef(asset_manager);
-	local.asset_manager = AAssetManager_fromJava(local.env, local.asset_manager_obj);
-	if (local.asset_manager == nullptr) {
-		log_fail_reason(95, log_error, "Couldn't get the Android asset manager!");
-		return false;
-	}
-	local.env->DeleteLocalRef(activity_class);
-	local.env->DeleteLocalRef(asset_manager);
 
 #if defined(SK_DYNAMIC_OPENXR)
 	// Android has no universally supported openxr_loader yet, so on this
 	// platform we don't static link it, and instead provide devs a way to ship
 	// other loaders.
+	const sk_settings_t* settings = sk_get_settings_ref();
 	if (settings->mode == app_mode_xr && dlopen("libopenxr_loader.so", RTLD_NOW) == nullptr) {
 		log_fail_reason(95, log_error, "openxr_loader failed to load!");
 		return false;
 	}
 #endif
+
+	// Process any Xamarin surface that arrived before the VM was ready.
+	android_process_pending_window();
 
 	return true;
 }
@@ -132,24 +91,12 @@ bool platform_impl_init() {
 ///////////////////////////////////////////
 
 void platform_impl_shutdown() {
-	local.env->DeleteGlobalRef(local.asset_manager_obj);
 }
 
 ///////////////////////////////////////////
 
 void platform_impl_step() {
-	if (!local_persist.next_win_ready) return;
-
-	// If we got our window from xamarin, it's a jobject, and needs
-	// converted into an ANativeWindow first!
-	if (local_persist.next_window_xam != nullptr) {
-		local_persist.next_window = ANativeWindow_fromSurface(local.env, local_persist.next_window_xam);
-		local_persist.next_window_xam = nullptr;
-	}
-
-	local.window = local_persist.next_window;
-	local_persist.next_win_ready = false;
-	local_persist.next_window    = nullptr;
+	android_process_pending_window();
 }
 
 ///////////////////////////////////////////
@@ -168,28 +115,13 @@ void android_set_window_xam(void *window) {
 
 ///////////////////////////////////////////
 
-bool android_read_asset(const char* asset_name, void** out_data, size_t* out_size) {
-	// See: http://www.50ply.com/blog/2013/01/19/loading-compressed-android-assets-with-file-pointer/
-	AAsset *asset = AAssetManager_open(local.asset_manager, asset_name, AASSET_MODE_BUFFER);
-	if (asset) {
-		*out_size = AAsset_getLength(asset);
-		*out_data = sk_malloc(*out_size + 1);
-		AAsset_read (asset, *out_data, *out_size);
-		AAsset_close(asset);
-
-		((uint8_t *)*out_data)[*out_size] = 0;
-		return true;
-	}
-	return false;
-}
-
 ///////////////////////////////////////////
 // Backend                               //
 ///////////////////////////////////////////
 
-void *backend_android_get_java_vm () { return local_persist.vm; }
-void *backend_android_get_activity() { return local.activity; }
-void *backend_android_get_jni_env () { return local.env; }
+void *backend_android_get_java_vm () { return ska_android_get_vm(); }
+void *backend_android_get_activity() { return ska_android_get_activity(); }
+void *backend_android_get_jni_env () { return ska_android_get_jni_env(); }
 
 ///////////////////////////////////////////
 

@@ -239,17 +239,7 @@
     {
       "name":        "Linux_Arm64_Release",
       "description": "Release build for Linux Arm64",
-      "hidden":      false,
-      "inherits":    "Linux_Arm64",
-      "binaryDir":   "${sourceDir}/bin/intermediate/Linux_ARM64_Release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-    {
-      "name":        "Linux_Arm64_Release",
-      "description": "Release build for Linux Arm64",
-      "inherits":    ["Linux_Arm64_Base", "BuildType_Release"],
+      "inherits":    ["Linux_Arm64", "BuildType_Release"],
       "binaryDir":   "${sourceDir}/bin/intermediate/Linux_ARM64_Release",
       "cacheVariables": {
         "CMAKE_AR":               "/usr/bin/aarch64-linux-gnu-ar",

@@ -98,6 +98,11 @@ bool platform_init() {
 	ska_settings.alloc   = ska_alloc_wrapper;
 	ska_settings.realloc = ska_realloc_wrapper;
 	ska_settings.free    = ska_free_wrapper;
+#if defined(SK_OS_ANDROID)
+	// Forward Android Context to sk_app so JNI features (clipboard, kvpstore,
+	// file dialogs, asset reading) work in library mode.
+	ska_android_set_context((void*)settings->android_activity);
+#endif
 	if (!ska_init(&ska_settings)) {
 		log_errf("sk_app initialization failed: %s", ska_error_get() ? ska_error_get() : "unknown error");
 		log_fail_reason(80, log_error, "sk_app initialization failed");

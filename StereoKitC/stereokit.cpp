@@ -120,11 +120,6 @@ bool32_t sk_init(sk_settings_t settings) {
 	// on desktop.
 	if (local.settings.render_multisample == 0) local.settings.render_multisample = 4;
 
-#if defined(SK_OS_ANDROID)
-	// don't allow flatscreen fallback on Android
-	local.settings.no_flatscreen_fallback = true;
-#endif
-
 	// Make a nice name for the logs, something that is identifiable as
 	// StereoKit, but also can distinguish between different SK apps. This
 	// isn't used on all platforms, but can be particularly helpful on Android.
