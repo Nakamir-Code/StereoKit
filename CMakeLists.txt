@@ -41,8 +41,8 @@ set(SK_BUILD_TESTS                  ON  CACHE BOOL "Build the StereoKitCTest pro
 set(SK_BUILD_SHARED_LIBS            ON  CACHE BOOL "Should StereoKit build as a shared, or static library?")
 set(SK_DYNAMIC_OPENXR               OFF CACHE BOOL "Dynamic link with the standard OpenXR Loader. Not what you want on desktop, but on Android you may need to dynamic link with other loaders.")
 set(SK_WINDOWS_GL                   OFF CACHE BOOL "Build Windows version using OpenGL as the renderer. This is primarily for debugging GL code while developing on Windows.")
-set(SK_LOCAL_SK_RENDERER            ON  CACHE BOOL "Build using a local version of sk_renderer, instead of the latest release. This is useful for testing in-progress changes to sk_renderer.")
-set(SK_LOCAL_SK_APP                 ON  CACHE BOOL "Build using a local version of sk_app, instead of the latest release. This is useful for testing in-progress changes to sk_app.")
+set(SK_LOCAL_SK_RENDERER            OFF  CACHE BOOL "Build using a local version of sk_renderer, instead of the latest release. This is useful for testing in-progress changes to sk_renderer.")
+set(SK_LOCAL_SK_APP                 OFF  CACHE BOOL "Build using a local version of sk_app, instead of the latest release. This is useful for testing in-progress changes to sk_app.")
 set(SK_PROFILE                      OFF CACHE BOOL "Build with Tracy profiler enabled.")
 set(FORCE_COLORED_OUTPUT            OFF CACHE BOOL "Always produce ANSI-colored output (GNU/Clang only).")
 
@@ -275,7 +275,7 @@ if (NOT SK_LOCAL_SK_RENDERER)
   CPMAddPackage(
     NAME sk_renderer
     GITHUB_REPOSITORY StereoKit/sk_renderer
-    GIT_TAG v2026.2.13
+    GIT_TAG ac7e975dba44ff25411c746c65770e5e0354b2ef
   )
 else()
   # For building directly with in-progress sk_renderer changes, point this to your
@@ -294,7 +294,7 @@ if (NOT SK_LOCAL_SK_APP)
   CPMAddPackage(
     NAME sk_app
     GITHUB_REPOSITORY StereoKit/sk_app
-    GIT_TAG v0.1.0
+    GIT_TAG ab4867265558338205c5bfc37924e54844e6d9cc
   )
 else()
   # For building directly with in-progress sk_app changes, point this to your
