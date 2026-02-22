@@ -294,7 +294,7 @@ if (NOT SK_LOCAL_SK_APP)
   CPMAddPackage(
     NAME sk_app
     GITHUB_REPOSITORY StereoKit/sk_app
-    GIT_TAG ab4867265558338205c5bfc37924e54844e6d9cc
+    GIT_TAG 0d56929b1c76bafa5f87529b69e4adc5c506fc47
   )
 else()
   # For building directly with in-progress sk_app changes, point this to your
