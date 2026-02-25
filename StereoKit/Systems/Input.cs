@@ -355,10 +355,10 @@ namespace StereoKit
 		/// </summary>
 		public static BtnState EyesTracked => NativeAPI.input_eyes_tracked();
 
-		/// <summary>The position and orientation of the user's head! This is
-		/// the center point between the user's eyes, NOT the center of the
-		/// user's head. Forward points the same way the user's face is 
-		/// facing.</summary>
+		/// <summary>The position and orientation of the user's head in world
+		/// space! This is the center point between the user's eyes, NOT the
+		/// center of the user's head. Forward points the same way the user's
+		/// face is facing.</summary>
 		public static Pose  Head  => NativeAPI.input_head();
 		/// <summary>Information about this system's mouse, or lack thereof!
 		/// </summary>
