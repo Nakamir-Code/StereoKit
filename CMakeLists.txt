@@ -44,6 +44,7 @@ set(SK_WINDOWS_GL                   OFF CACHE BOOL "Build Windows version using 
 set(SK_LOCAL_SK_RENDERER            OFF  CACHE BOOL "Build using a local version of sk_renderer, instead of the latest release. This is useful for testing in-progress changes to sk_renderer.")
 set(SK_LOCAL_SK_APP                 OFF  CACHE BOOL "Build using a local version of sk_app, instead of the latest release. This is useful for testing in-progress changes to sk_app.")
 set(SK_PROFILE                      OFF CACHE BOOL "Build with Tracy profiler enabled.")
+set(SK_STRIP_DEBUG_SYMBOLS          ON  CACHE BOOL "Strip debug symbols from the shared library. Disable on Android to keep symbols embedded for native debugging.")
 set(FORCE_COLORED_OUTPUT            OFF CACHE BOOL "Always produce ANSI-colored output (GNU/Clang only).")
 
 ###########################################
@@ -294,7 +295,7 @@ if (NOT SK_LOCAL_SK_APP)
   CPMAddPackage(
     NAME sk_app
     GITHUB_REPOSITORY StereoKit/sk_app
-    GIT_TAG 0d56929b1c76bafa5f87529b69e4adc5c506fc47
+    GIT_TAG b23845f1a1edada3ac2afb4b2f1e7ca134b24394
   )
 else()
   # For building directly with in-progress sk_app changes, point this to your
@@ -634,7 +635,7 @@ if (NOT MSVC)
   else()
     set(SK_BIN_DEBUG_EXT ".so.dbg")
 
-    if (NOT EMSCRIPTEN AND SK_BUILD_SHARED_LIBS)
+    if (NOT EMSCRIPTEN AND SK_BUILD_SHARED_LIBS AND SK_STRIP_DEBUG_SYMBOLS)
       set(SK_SEPARATE_DBG ON)
       add_custom_command(TARGET StereoKitC POST_BUILD
         COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:StereoKitC> $<TARGET_FILE_DIR:StereoKitC>/$<TARGET_FILE_PREFIX:StereoKitC>$<TARGET_FILE_BASE_NAME:StereoKitC>${SK_BIN_DEBUG_EXT}
@@ -642,7 +643,7 @@ if (NOT MSVC)
         COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=$<TARGET_FILE_DIR:StereoKitC>/$<TARGET_FILE_PREFIX:StereoKitC>$<TARGET_FILE_BASE_NAME:StereoKitC>${SK_BIN_DEBUG_EXT} $<TARGET_FILE:StereoKitC>
       )
     endif()
-    if (SK_DYNAMIC_OPENXR)
+    if (SK_DYNAMIC_OPENXR AND SK_STRIP_DEBUG_SYMBOLS)
       add_custom_command(TARGET StereoKitC POST_BUILD
         COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:openxr_loader>
       )
@@ -825,7 +826,12 @@ endif()
 ###########################################
 
 if (SK_BUILD_TESTS)
-  add_executable( StereoKitCTest ${SK_WIN32}
+  add_skapp ( StereoKitCTest
+    PACKAGE_NAME net.stereokit.stereokitctest
+    APP_NAME "StereoKit C Test"
+    MANIFEST Examples/StereoKitCTest/AndroidManifest.xml )
+
+  target_sources( StereoKitCTest PRIVATE
     Examples/StereoKitCTest/main.cpp
     Examples/StereoKitCTest/demo_envmap.h
     Examples/StereoKitCTest/demo_envmap.cpp
@@ -865,12 +871,10 @@ if (SK_BUILD_TESTS)
     Examples/StereoKitCTest/skt_lighting.cpp
   )
 
-  target_link_libraries( StereoKitCTest
-    StereoKitC
-  )
-
-  # Ensure we get MoltenVK binaries in the right place on MacOS
-  skr_copy_moltenvk(StereoKitCTest)
+  target_link_libraries( StereoKitCTest PRIVATE StereoKitC )
+  if (SK_DYNAMIC_OPENXR)
+    target_link_libraries( StereoKitCTest PRIVATE openxr_loader )
+  endif()
 
   # MinGW: Statically link C++ runtime. Both DLL and EXE get their own copy.
   # --allow-multiple-definition: The DLL's import library has runtime symbols too,
@@ -883,8 +887,11 @@ if (SK_BUILD_TESTS)
     target_compile_options(StereoKitCTest PRIVATE "/MP8")
   endif()
 
+  # Ensure we get MoltenVK binaries in the right place on MacOS
+  skr_copy_moltenvk(StereoKitCTest)
+
   skshaderc_compile_headers( StereoKitCTest
-    ${CMAKE_BINARY_DIR}/test_shaders/
+    ${CMAKE_BINARY_DIR}/shaders/
     "-e -O3 -f ${SK_SHADER_VERBOSITY} -i ${CMAKE_CURRENT_SOURCE_DIR}/tools/include"
     Examples/StereoKitCTest/Shaders/blit.hlsl
     Examples/StereoKitCTest/Shaders/skt_default_lighting.hlsl
@@ -892,14 +899,11 @@ if (SK_BUILD_TESTS)
     Examples/StereoKitCTest/Shaders/skt_shadow.hlsl
     Examples/StereoKitCTest/Shaders/skt_shadow_caster.hlsl)
 
-  #target_link_options   (StereoKitCTest PRIVATE ${SK_LINKER_FLAGS})
+  # Add source assets and compiled shaders to the app
+  target_skapp_assets(StereoKitCTest ${CMAKE_CURRENT_BINARY_DIR}/generated)
+  target_skapp_assets(StereoKitCTest ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Assets)
 
-  set (source      ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Assets)
-  set (destination $<TARGET_FILE_DIR:StereoKitCTest>/Assets)
-  add_custom_command(
-    TARGET StereoKitCTest POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${source} ${destination}
-    COMMENT "Copy resources from ${source} => ${destination}")
+  #target_link_options   (StereoKitCTest PRIVATE ${SK_LINKER_FLAGS})
 endif()
 
 ###########################################
