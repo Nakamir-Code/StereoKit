@@ -51,6 +51,7 @@ class DemoSensorDepth : ITest
 	uint             meshWidth;
 	uint             meshHeight;
 	int              meshStep;
+	Tex              depthTex;
 
 	public void Initialize()
 	{
@@ -66,22 +67,8 @@ class DemoSensorDepth : ITest
 		// Place the helmet 1m in front of the user at head height
 		modelPose = new Pose(0, 0, -0.6f, Quat.LookDir(0, 0, 1));
 
+		depthTex = null;
 		Permission.Request(PermissionType.Scene);
-
-		if (!Sensor.Depth.IsAvailable)
-		{
-			Log.Warn("Sensor depth is not available on this runtime.");
-			return;
-		}
-
-		Sensor.Depth.Start();
-
-		Tex tex = Sensor.Depth.Texture;
-		if (tex != null)
-		{
-			pointCloudMatL[MatParamName.DiffuseTex] = tex;
-			pointCloudMatR[MatParamName.DiffuseTex] = tex;
-		}
 	}
 
 	public void Shutdown()
@@ -95,6 +82,22 @@ class DemoSensorDepth : ITest
 
 	public void Step()
 	{
+		if (depthTex is null && Sensor.Depth.IsAvailable)
+		{
+			if (!Sensor.Depth.IsRunning)
+				Sensor.Depth.Start();
+
+			if (Sensor.Depth.IsRunning)
+			{
+				depthTex = Sensor.Depth.Texture;
+				if (depthTex != null)
+				{
+					pointCloudMatL[MatParamName.DiffuseTex] = depthTex;
+					pointCloudMatR[MatParamName.DiffuseTex] = depthTex;
+				}
+			}
+		}
+
 		if (demoMode == DemoMode.PointCloud)
 		{
 			if (Sensor.Depth.TryGetLatestFrame(out SensorDepthFrame frame))
@@ -285,13 +288,13 @@ class DemoSensorDepth : ITest
 			{
 				if (UI.Button("Start Depth Capture"))
 					Sensor.Depth.Start();
-			}
+				}
 			else
 			{
 				if (UI.Button("Stop Depth Capture"))
 					Sensor.Depth.Stop();
+				}
 			}
-		}
 		else // Occlusion
 		{
 			SliderRow("Model Scale", "modelscale", ref modelScale, 0.05f, 1.0f, 0, "{0:0.00}");
