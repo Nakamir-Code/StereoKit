@@ -900,7 +900,7 @@ if (SK_BUILD_TESTS)
     Examples/StereoKitCTest/Shaders/skt_shadow_caster.hlsl)
 
   # Add source assets and compiled shaders to the app
-  target_skapp_assets(StereoKitCTest ${CMAKE_CURRENT_BINARY_DIR}/generated)
+  target_skapp_assets(StereoKitCTest ${CMAKE_CURRENT_BINARY_DIR}/shaders)
   target_skapp_assets(StereoKitCTest ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Assets)
 
   #target_link_options   (StereoKitCTest PRIVATE ${SK_LINKER_FLAGS})
