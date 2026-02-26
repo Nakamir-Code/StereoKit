@@ -90,7 +90,7 @@ class DemoSensorDepth : ITest
 			if (Sensor.Depth.IsRunning)
 			{
 				depthTex = Sensor.Depth.Texture;
-				if (depthTex != null)
+				if (depthTex is not null)
 				{
 					pointCloudMatL[MatParamName.DiffuseTex] = depthTex;
 					pointCloudMatR[MatParamName.DiffuseTex] = depthTex;
@@ -288,13 +288,13 @@ class DemoSensorDepth : ITest
 			{
 				if (UI.Button("Start Depth Capture"))
 					Sensor.Depth.Start();
-				}
+			}
 			else
 			{
 				if (UI.Button("Stop Depth Capture"))
 					Sensor.Depth.Stop();
-				}
 			}
+		}
 		else // Occlusion
 		{
 			SliderRow("Model Scale", "modelscale", ref modelScale, 0.05f, 1.0f, 0, "{0:0.00}");
