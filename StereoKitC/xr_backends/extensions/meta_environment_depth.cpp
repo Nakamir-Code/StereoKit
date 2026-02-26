@@ -58,6 +58,7 @@ typedef struct xr_environment_depth_state_t {
 	bool                                 depth_tex_initialized;
 	sensor_depth_frame_t                 latest_frame;
 	bool                                 has_latest_frame;
+	XrTime                               last_stop_time;
 } xr_environment_depth_state_t;
 static xr_environment_depth_state_t local = {};
 
@@ -288,6 +289,12 @@ void xr_ext_meta_environment_depth_stop() {
 	if (!local.running || local.provider == XR_NULL_HANDLE || xrStopEnvironmentDepthProviderMETA == nullptr)
 		return;
 
+	// Remember the last frame time so we can reject stale frames after restart
+	if (local.has_latest_frame) {
+		XrTime frame_time    = local.latest_frame.capture_time != 0 ? local.latest_frame.capture_time : local.latest_frame.display_time;
+		local.last_stop_time = frame_time;
+	}
+
 	XrResult result = xrStopEnvironmentDepthProviderMETA(local.provider);
 	if (XR_FAILED(result)) {
 		log_warnf("XR_META_environment_depth: xrStopEnvironmentDepthProviderMETA failed: [%s]", openxr_string(result));
@@ -365,6 +372,14 @@ void xr_ext_meta_environment_depth_update_frame(XrTime display_time) {
 	if (XR_FAILED(result)) {
 		log_warnf("XR_META_environment_depth: xrAcquireEnvironmentDepthImageMETA failed: [%s]", openxr_string(result));
 		return;
+	}
+
+	if (local.last_stop_time != 0) {
+		XrTime frame_time = timestamp_info.captureTime != 0 ? timestamp_info.captureTime : display_time;
+		if (frame_time <= local.last_stop_time) {
+			return;
+		}
+		local.last_stop_time = 0;
 	}
 
 	if (image_info.swapchainIndex >= local.image_count || local.images == nullptr) {
