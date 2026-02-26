@@ -20,7 +20,6 @@ class Program
 		blendPreference = DisplayBlend.AnyTransparent,
 		mode            = AppMode.XR,
 		renderScaling   = 1.5f,
-		renderMultisample =4,
 	};
 
 	static Mesh      floorMesh;
