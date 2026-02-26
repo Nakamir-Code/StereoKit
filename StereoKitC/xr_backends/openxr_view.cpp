@@ -475,6 +475,7 @@ bool openxr_display_swapchain_update(device_display_t *display) {
 
 	const char* strategy_name = "";
 	switch (strategy) {
+	case pipeline_render_strategy_none: break;
 	case pipeline_render_strategy_sequential:   strategy_name = "sequential";   break;
 	case pipeline_render_strategy_simultaneous: strategy_name = "simultaneous"; break;
 	case pipeline_render_strategy_multiview:    strategy_name = "multiview";    break;
