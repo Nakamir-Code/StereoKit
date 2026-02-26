@@ -1,5 +1,5 @@
 #include "stereokit.hlsli"
-//--name = default/shader_depth_prepass
+//--name = sk/depth_prepass
 
 //--depth_tex
 Texture2DArray depth_tex   : register(t1);
@@ -22,9 +22,10 @@ struct vsIn {
 	float4 col  : COLOR0;
 };
 struct psIn {
-	float4 pos     : SV_POSITION;
-	float2 uv      : TEXCOORD0;
-	uint   view_id : SV_RenderTargetArrayIndex;
+	float4 pos        : SV_POSITION;
+	float4 depth_clip : TEXCOORD0;
+	uint   view_id    : SV_RenderTargetArrayIndex;
+	uint   eye        : TEXCOORD1;
 };
 struct psOut {
 	float  depth : SV_Depth;
@@ -35,48 +36,43 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 	psIn o;
 	o.view_id = id % sk_view_count;
 	o.pos     = input.pos;
-	o.uv      = input.uv;
+	o.eye     = sk_eye_offset + o.view_id;
+
+	// Unproject screen UV to view-space
+	float2 ndc     = input.uv * 2.0 - 1.0;
+	float4 near_vs = mul(float4(ndc.x, -ndc.y, 0, 1), sk_proj_inv[o.view_id]);
+	near_vs /= near_vs.w;
+
+	// Rotate view-space ray to world space
+	float3x3 view_rot = float3x3(
+		sk_view[o.view_id][0].xyz,
+		sk_view[o.view_id][1].xyz,
+		sk_view[o.view_id][2].xyz);
+	float3 ray_ws = mul(near_vs.xyz, transpose(view_rot));
+
+	// Project a far point along the ray into depth camera clip space
+	float3   cam_pos = sk_camera_pos[o.view_id].xyz;
+	float4x4 dvp     = (o.eye == 0) ? depth_view_proj_l : depth_view_proj_r;
+	o.depth_clip     = mul(dvp, float4(cam_pos + ray_ws * 100.0, 1));
+
 	return o;
 }
 
 psOut ps(psIn input) {
 	psOut o;
 
-	// Unproject screen UV to a view-space ray direction
-	float2 ndc     = input.uv * 2.0 - 1.0;
-	float4 near_vs = mul(float4(ndc.x, -ndc.y, 0, 1), sk_proj_inv[input.view_id]);
-	near_vs /= near_vs.w;
-	float3 ray_dir_vs = normalize(near_vs.xyz);
-
-	// Rotate view-space ray to world space
-	float3x3 view_rot = float3x3(
-		sk_view[input.view_id][0].xyz,
-		sk_view[input.view_id][1].xyz,
-		sk_view[input.view_id][2].xyz);
-	float3 ray_dir_ws = normalize(mul(ray_dir_vs, transpose(view_rot)));
-
-	// Select per-eye depth camera data
-	uint     eye     = sk_eye_offset + input.view_id;
-	float4x4 dvp     = (eye == 0) ? depth_view_proj_l : depth_view_proj_r;
-	float3   cam_pos = sk_camera_pos[input.view_id].xyz;
-	float    sample_dist = 100.0;
-
-	// Project along ray into depth camera clip space
-	float4 depth_clip = mul(dvp, float4(cam_pos + ray_dir_ws * sample_dist, 1));
-
 	// Reject behind depth camera
-	if (depth_clip.w <= 0) { discard; o.depth = 0; o.color = 0; return o; }
+	if (input.depth_clip.w <= 0) { discard; o.depth = 0; o.color = 0; return o; }
 
-	float2 depth_uv = depth_clip.xy / depth_clip.w * 0.5 + 0.5;
+	float2 depth_uv = input.depth_clip.xy / input.depth_clip.w * 0.5 + 0.5;
 	if (any(depth_uv < 0) || any(depth_uv > 1)) { discard; o.depth = 0; o.color = 0; return o; }
 
-	// Sample depth and reject invalid values
-	float depth_raw = depth_tex.SampleLevel(depth_tex_s, float3(depth_uv, (float)eye), 0).r;
+	float depth_raw = depth_tex.SampleLevel(depth_tex_s, float3(depth_uv, (float)input.eye), 0).r;
 	if (depth_raw <= 0 || depth_raw >= 1) { discard; o.depth = 0; o.color = 0; return o; }
 
 	// Unproject depth texel to world space via inverse depth VP
 	// depth_raw is a z-buffer value in [0,1], convert to NDC [-1,1]
-	float4x4 dvp_inv = (eye == 0) ? depth_view_proj_inv_l : depth_view_proj_inv_r;
+	float4x4 dvp_inv = (input.eye == 0) ? depth_view_proj_inv_l : depth_view_proj_inv_r;
 	float4 world_h   = mul(dvp_inv, float4(depth_uv * 2.0 - 1.0, depth_raw * 2.0 - 1.0, 1));
 	float3 world_pos = world_h.xyz / world_h.w;
 

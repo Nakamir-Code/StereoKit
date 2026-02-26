@@ -210,7 +210,7 @@ bool defaults_init() {
 	SHADER_DECODE(sks_shader_builtin_pbr_hlsl_zip        ); sk_default_shader_pbr         = shader_create_mem(data, size);
 	SHADER_DECODE(sks_shader_builtin_pbr_clip_hlsl_zip   ); sk_default_shader_pbr_clip    = shader_create_mem(data, size);
 	SHADER_DECODE(sks_shader_builtin_sh_compute_hlsl_zip ); sk_default_shader_sh_compute  = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_sensor_depth_prepass_hlsl_zip); sk_default_shader_depth_prepass = shader_create_mem(data, size);
+	SHADER_DECODE(sks_shader_builtin_depth_prepass_hlsl_zip); sk_default_shader_depth_prepass = shader_create_mem(data, size);
 	sk_free(data);
 #undef SHADER_DECODE
 	

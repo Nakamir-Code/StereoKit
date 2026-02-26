@@ -121,64 +121,6 @@ xr_system_ xr_ext_meta_environment_depth_initialize(void*) {
 
 	local.supports_hand_removal = properties_depth.supportsHandRemoval == XR_TRUE;
 
-	XrEnvironmentDepthProviderCreateInfoMETA provider_info = { XR_TYPE_ENVIRONMENT_DEPTH_PROVIDER_CREATE_INFO_META };
-	result = xrCreateEnvironmentDepthProviderMETA(xr_session, &provider_info, &local.provider);
-	if (XR_FAILED(result)) {
-		log_warnf("XR_META_environment_depth: xrCreateEnvironmentDepthProviderMETA failed: [%s]", openxr_string(result));
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
-
-	XrEnvironmentDepthSwapchainCreateInfoMETA swapchain_info = { XR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_CREATE_INFO_META };
-	result = xrCreateEnvironmentDepthSwapchainMETA(local.provider, &swapchain_info, &local.swapchain);
-	if (XR_FAILED(result)) {
-		log_warnf("XR_META_environment_depth: xrCreateEnvironmentDepthSwapchainMETA failed: [%s]", openxr_string(result));
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
-
-	local.swapchain_state = { XR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_STATE_META };
-	result = xrGetEnvironmentDepthSwapchainStateMETA(local.swapchain, &local.swapchain_state);
-	if (XR_FAILED(result)) {
-		log_warnf("XR_META_environment_depth: xrGetEnvironmentDepthSwapchainStateMETA failed: [%s]", openxr_string(result));
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
-
-	result = xrEnumerateEnvironmentDepthSwapchainImagesMETA(local.swapchain, 0, &local.image_count, nullptr);
-	if (XR_FAILED(result) || local.image_count == 0) {
-		log_warnf("XR_META_environment_depth: xrEnumerateEnvironmentDepthSwapchainImagesMETA(count) failed: [%s]", openxr_string(result));
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
-
-	local.images = sk_malloc_t(XrSwapchainImageVulkanKHR, local.image_count);
-	if (local.images == nullptr) {
-		log_warn("XR_META_environment_depth: Failed to allocate swapchain image array.");
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
-	for (uint32_t i = 0; i < local.image_count; i++) {
-		local.images[i] = { XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR };
-	}
-
-	result = xrEnumerateEnvironmentDepthSwapchainImagesMETA(
-		local.swapchain,
-		local.image_count,
-		&local.image_count,
-		(XrSwapchainImageBaseHeader*)local.images);
-	if (XR_FAILED(result)) {
-		log_warnf("XR_META_environment_depth: xrEnumerateEnvironmentDepthSwapchainImagesMETA(images) failed: [%s]", openxr_string(result));
-		xr_ext_meta_environment_depth_destroy();
-		return xr_system_fail;
-	}
-
-	// Per the XR_META_environment_depth spec, the Vulkan swapchain format is
-	// VK_FORMAT_D16_UNORM and it is a 2D array texture with 2 layers
-	// (layer 0 = left eye, layer 1 = right eye)
-	log_infof("XR_META_environment_depth: swapchain images=%u size=%dx%d fmt=D16_UNORM layers=2",
-		local.image_count, local.swapchain_state.width, local.swapchain_state.height);
-
 	local.available = true;
 	return xr_system_succeed;
 }
@@ -249,10 +191,72 @@ sensor_depth_caps_ xr_ext_meta_environment_depth_get_capabilities() {
 ///////////////////////////////////////////
 
 bool xr_ext_meta_environment_depth_start(sensor_depth_caps_ flags) {
-	if (!local.available || local.provider == XR_NULL_HANDLE || xrStartEnvironmentDepthProviderMETA == nullptr)
+	if (!local.available || xrStartEnvironmentDepthProviderMETA == nullptr)
 		return false;
 	if (local.running)
 		return true;
+
+	if (local.provider == XR_NULL_HANDLE) {
+		XrEnvironmentDepthProviderCreateInfoMETA provider_info = { XR_TYPE_ENVIRONMENT_DEPTH_PROVIDER_CREATE_INFO_META };
+		XrResult result = xrCreateEnvironmentDepthProviderMETA(xr_session, &provider_info, &local.provider);
+		if (XR_FAILED(result)) {
+			log_warnf("XR_META_environment_depth: xrCreateEnvironmentDepthProviderMETA failed: [%s]", openxr_string(result));
+			xr_ext_meta_environment_depth_destroy();
+			return false;
+		}
+	}
+
+	if (local.swapchain == XR_NULL_HANDLE) {
+		XrEnvironmentDepthSwapchainCreateInfoMETA swapchain_info = { XR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_CREATE_INFO_META };
+		XrResult result = xrCreateEnvironmentDepthSwapchainMETA(local.provider, &swapchain_info, &local.swapchain);
+		if (XR_FAILED(result)) {
+			log_warnf("XR_META_environment_depth: xrCreateEnvironmentDepthSwapchainMETA failed: [%s]", openxr_string(result));
+			xr_ext_meta_environment_depth_destroy();
+			return false;
+		}
+
+		local.swapchain_state = { XR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_STATE_META };
+		result = xrGetEnvironmentDepthSwapchainStateMETA(local.swapchain, &local.swapchain_state);
+		if (XR_FAILED(result)) {
+			log_warnf("XR_META_environment_depth: xrGetEnvironmentDepthSwapchainStateMETA failed: [%s]", openxr_string(result));
+			xr_ext_meta_environment_depth_destroy();
+			return false;
+		}
+
+		result = xrEnumerateEnvironmentDepthSwapchainImagesMETA(local.swapchain, 0, &local.image_count, nullptr);
+		if (XR_FAILED(result) || local.image_count == 0) {
+			log_warnf("XR_META_environment_depth: xrEnumerateEnvironmentDepthSwapchainImagesMETA(count) failed: [%s]", openxr_string(result));
+			xr_ext_meta_environment_depth_destroy();
+			return false;
+		}
+
+		local.images = sk_malloc_t(XrSwapchainImageVulkanKHR, local.image_count);
+		if (local.images == nullptr) {
+			log_warn("XR_META_environment_depth: Failed to allocate swapchain image array.");
+			xr_ext_meta_environment_depth_destroy();
+			return false;
+		}
+		for (uint32_t i = 0; i < local.image_count; i++) {
+			local.images[i] = { XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR };
+		}
+
+		result = xrEnumerateEnvironmentDepthSwapchainImagesMETA(
+			local.swapchain,
+			local.image_count,
+			&local.image_count,
+			(XrSwapchainImageBaseHeader*)local.images);
+		if (XR_FAILED(result)) {
+			log_warnf("XR_META_environment_depth: xrEnumerateEnvironmentDepthSwapchainImagesMETA(images) failed: [%s]", openxr_string(result));
+			xr_ext_meta_environment_depth_destroy();
+			return false;
+		}
+
+		// Per the XR_META_environment_depth spec, the Vulkan swapchain format is
+		// VK_FORMAT_D16_UNORM and it is a 2D array texture with 2 layers
+		// (layer 0 = left eye, layer 1 = right eye)
+		log_infof("XR_META_environment_depth: swapchain images=%u size=%dx%d fmt=D16_UNORM layers=2",
+			local.image_count, local.swapchain_state.width, local.swapchain_state.height);
+	}
 
 	XrResult result = xrStartEnvironmentDepthProviderMETA(local.provider);
 	if (XR_FAILED(result)) {
