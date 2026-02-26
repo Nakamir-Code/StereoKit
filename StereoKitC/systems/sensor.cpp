@@ -30,6 +30,9 @@ static struct {
 	void*                submit_meta;
 	size_t               submit_meta_size;
 
+	// Tracks the last submitted frame to avoid redundant copies
+	uint64_t             last_submitted_frame_id;
+
 	// Latest completed readback
 	void*                latest_meta;
 	size_t               latest_meta_size;
@@ -37,6 +40,11 @@ static struct {
 	size_t               latest_data_size;
 	bool                 has_latest_data;
 } readback = {};
+
+// TODO: The single-in-flight readback is sufficient for low-rate sensors
+// (~20-30 Hz depth) where the readback cycle completes before the next
+// sensor frame arrives. For higher-rate sources, a circular buffer of
+// in-flight readbacks would be needed to avoid dropping frames.
 
 ///////////////////////////////////////////
 
@@ -46,7 +54,7 @@ void sensor_readback_request() {
 
 ///////////////////////////////////////////
 
-void sensor_readback_update(tex_t gpu_tex, int32_t width, int32_t height, int32_t array_count, const void* frame_meta, size_t frame_meta_size) {
+void sensor_readback_update(tex_t gpu_tex, int32_t width, int32_t height, int32_t array_count, const void* frame_meta, size_t frame_meta_size, uint64_t frame_id) {
 	if (!readback.wants_cpu_data)
 		return;
 
@@ -108,8 +116,8 @@ void sensor_readback_update(tex_t gpu_tex, int32_t width, int32_t height, int32_
 		tex_set_color_arr(readback.readback_tex, width, height, nullptr, array_count, 1, nullptr);
 	}
 
-	// Start new readback if none in-flight
-	if (readback.pending_readback_count == 0) {
+	// Start new readback if none in-flight and source has new data
+	if (readback.pending_readback_count == 0 && frame_id != readback.last_submitted_frame_id) {
 		skr_tex_copy(&gpu_tex->gpu_tex, &readback.readback_tex->gpu_tex, 0, 0, 0, 0, array_count);
 		int32_t submitted = 0;
 		for (int32_t i = 0; i < array_count; i++) {
@@ -120,7 +128,8 @@ void sensor_readback_update(tex_t gpu_tex, int32_t width, int32_t height, int32_
 			}
 		}
 		if (submitted == array_count) {
-			readback.pending_readback_count = array_count;
+			readback.pending_readback_count  = array_count;
+			readback.last_submitted_frame_id = frame_id;
 			// Stash metadata for when this readback completes
 			if (frame_meta != nullptr && frame_meta_size > 0) {
 				if (readback.submit_meta == nullptr || readback.submit_meta_size != frame_meta_size) {

@@ -405,7 +405,10 @@ void xr_ext_meta_environment_depth_update_frame(XrTime display_time) {
 	local.latest_frame     = frame;
 	local.has_latest_frame = true;
 
-	sensor_readback_update(local.depth_tex, (int32_t)frame.width, (int32_t)frame.height, array_count, &frame, sizeof(frame));
+	// Use a unique frame identifier to avoid redundant readbacks
+	uint64_t frame_id = (uint64_t)(timestamp_info.captureTime != 0 ? timestamp_info.captureTime : display_time);
+
+	sensor_readback_update(local.depth_tex, (int32_t)frame.width, (int32_t)frame.height, array_count, &frame, sizeof(frame), frame_id);
 }
 
 ///////////////////////////////////////////

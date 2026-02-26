@@ -81,8 +81,8 @@ namespace StereoKit
 			/// with matching per-eye metadata. The readback pipeline
 			/// starts automatically on the first call and runs
 			/// asynchronously, so the first few calls may return false.
-			/// The returned data may be 1-2 frames behind the GPU
-			/// texture.</summary>
+			/// The returned data is typically 1-2 frames behind the GPU
+			/// texture, but can be more under heavy GPU load.</summary>
 			/// <typeparam name="T">The struct type to interpret the depth
 			/// data as. For depth16 format, use ushort.</typeparam>
 			/// <param name="info">The per-frame metadata matching this data.</param>
