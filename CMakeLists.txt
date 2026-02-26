@@ -382,6 +382,10 @@ set(SK_SRC_SYSTEMS
   StereoKitC/systems/input.cpp
   StereoKitC/systems/input_keyboard.h
   StereoKitC/systems/input_keyboard.cpp
+  StereoKitC/systems/sensor.h
+  StereoKitC/systems/sensor.cpp
+  StereoKitC/systems/sensor_depth.h
+  StereoKitC/systems/sensor_depth.cpp
   StereoKitC/systems/input_render.h
   StereoKitC/systems/input_render.cpp
   StereoKitC/systems/line_drawer.h
@@ -456,6 +460,8 @@ set(SK_SRC_XR_BACKENDS
 set(SK_SRC_XR_EXTS
   StereoKitC/xr_backends/extensions/composition_depth.h
   StereoKitC/xr_backends/extensions/composition_depth.cpp
+  StereoKitC/xr_backends/extensions/meta_environment_depth.h
+  StereoKitC/xr_backends/extensions/meta_environment_depth.cpp
   StereoKitC/xr_backends/extensions/debug_utils.h
   StereoKitC/xr_backends/extensions/debug_utils.cpp
   StereoKitC/xr_backends/extensions/ext_interaction_render_model.h
@@ -572,7 +578,8 @@ skshaderc_compile_headers(StereoKitC
   StereoKitC/shaders_builtin/shader_builtin_ui_aura.hlsl
   StereoKitC/shaders_builtin/shader_builtin_unlit.hlsl
   StereoKitC/shaders_builtin/shader_builtin_unlit_clip.hlsl
-  StereoKitC/shaders_builtin/shader_builtin_lightmap.hlsl )
+  StereoKitC/shaders_builtin/shader_builtin_lightmap.hlsl
+  StereoKitC/shaders_builtin/shader_builtin_depth_prepass.hlsl )
 
 # Set up Visual Studio folders/filters for a more organized
 # workspace there.
