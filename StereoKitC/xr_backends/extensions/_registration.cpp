@@ -6,12 +6,15 @@
 
 #include "../openxr.h"
 #include "../../asset_types/anchor.h"
+#include "../../systems/sensor.h"
+#include "../../systems/sensor_depth.h"
 
 #include "ext_management.h"
 #include "_registration.h"
 
 #include "composition_depth.h"
 #include "debug_utils.h"
+#include "meta_environment_depth.h"
 #include "ext_interaction_render_model.h"
 #include "ext_render_model.h"
 #include "eye_interaction.h"
@@ -57,6 +60,7 @@ bool ext_registration() {
 	xr_ext_fb_colorspace_register();
 	xr_ext_msft_observer_register();
 	xr_ext_composition_depth_register();
+	xr_ext_meta_environment_depth_register();
 	xr_ext_overlay_register();
 	xr_ext_oculus_audio_register();
 	xr_ext_msft_bridge_register();
@@ -73,6 +77,8 @@ bool ext_registration() {
 	oxri_register();
 
 	anchors_register();
+	sensor_register();
+	sensor_depth_register();
 
 	return true;
 }

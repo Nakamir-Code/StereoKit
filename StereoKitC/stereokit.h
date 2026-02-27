@@ -2735,6 +2735,23 @@ typedef enum world_refresh_ {
 	world_refresh_timer,
 } world_refresh_;
 
+/*Flags that describe which occlusion methods are active or
+  available. These can be combined to enable multiple occlusion
+  techniques simultaneously.*/
+typedef enum occlusion_caps_ {
+	/*No occlusion is active.*/
+	occlusion_caps_none  = 0,
+	/*Scene Understanding mesh-based occlusion (e.g. HoloLens).*/
+	occlusion_caps_mesh  = 1 << 0,
+	/*Depth texture-based occlusion (e.g. META environment depth).*/
+	occlusion_caps_depth = 1 << 1,
+	/*When combined with Depth: hands will also occlude virtual
+	  content. Without this flag, hands are removed from the depth
+	  buffer and will not occlude.*/
+	occlusion_caps_hands = 1 << 2,
+} occlusion_caps_;
+SK_MakeFlag(occlusion_caps_);
+
 SK_API bool32_t              world_has_bounds                (void);
 SK_API vec2                  world_get_bounds_size           (void);
 SK_API pose_t                world_get_bounds_pose           (void);
@@ -2743,12 +2760,15 @@ SK_API pose_t                world_from_perception_anchor    (void *perception_s
 SK_API bool32_t              world_try_from_spatial_graph    (uint8_t spatial_graph_node_id[16], bool32_t dynamic, int64_t qpc_time, pose_t *out_pose);
 SK_API bool32_t              world_try_from_perception_anchor(void *perception_spatial_anchor,   pose_t *out_pose);
 SK_API bool32_t              world_raycast                   (ray_t ray, ray_t *out_intersection);
-SK_API void                  world_set_occlusion_enabled     (bool32_t enabled);
-SK_API bool32_t              world_get_occlusion_enabled     (void);
+SK_API void                  world_set_occlusion             (occlusion_caps_ flags);
+SK_API occlusion_caps_       world_get_occlusion             (void);
+SK_API occlusion_caps_       world_occlusion_capabilities    (void);
+SK_DEPRECATED SK_API void    world_set_occlusion_enabled     (bool32_t enabled);
+SK_DEPRECATED SK_API bool32_t world_get_occlusion_enabled    (void);
 SK_API void                  world_set_raycast_enabled       (bool32_t enabled);
 SK_API bool32_t              world_get_raycast_enabled       (void);
-SK_API void                  world_set_occlusion_material    (material_t material);
-SK_API material_t            world_get_occlusion_material    (void);
+SK_DEPRECATED SK_API void    world_set_occlusion_material    (material_t material);
+SK_DEPRECATED SK_API material_t world_get_occlusion_material (void);
 SK_API void                  world_set_refresh_type          (world_refresh_ refresh_type);
 SK_API world_refresh_        world_get_refresh_type          (void);
 SK_API void                  world_set_refresh_radius        (float radius_meters);
@@ -2759,6 +2779,83 @@ SK_API button_state_         world_get_tracked               (void);
 SK_API origin_mode_          world_get_origin_mode           (void);
 SK_API pose_t                world_get_origin_offset         (void);
 SK_API void                  world_set_origin_offset         (pose_t offset);
+
+///////////////////////////////////////////
+
+/*Per-eye view metadata for a sensor depth frame, providing the
+  camera pose and field of view used to capture that eye's depth.*/
+typedef struct sensor_depth_view_t {
+	/*The pose of this eye's depth camera in world space.*/
+	pose_t     pose;
+	/*The field of view of this eye's depth camera, in degrees.*/
+	fov_info_t fov;
+} sensor_depth_view_t;
+
+/*Per-frame metadata for sensor depth. Contains timestamps, dimensions,
+  near/far planes, and per-eye camera metadata.*/
+typedef struct sensor_depth_frame_t {
+	/*The predicted display time this frame was acquired for, in OpenXR
+	  time units (nanoseconds).*/
+	int64_t                  display_time;
+	/*The actual capture time of the depth sensor images, in OpenXR time
+	  units (nanoseconds). Zero if the runtime does not support it.*/
+	int64_t                  capture_time;
+	/*Width of a single eye's depth image, in pixels.*/
+	uint32_t                 width;
+	/*Height of a single eye's depth image, in pixels.*/
+	uint32_t                 height;
+	/*Near clip plane of the depth projection, in meters.*/
+	float                    near_z;
+	/*Far clip plane of the depth projection, in meters.*/
+	float                    far_z;
+	/*Per-eye depth camera metadata. Index 0 is left, index 1 is right.*/
+	sensor_depth_view_t      views[2];
+} sensor_depth_frame_t;
+
+/*Capabilities for configuring the sensor depth system. These control
+  optional features that may or may not be supported on the current
+  platform. Check the capabilities for platform support.*/
+typedef enum sensor_depth_caps_ {
+	/*No special capabilities.*/
+	sensor_depth_caps_none          = 0,
+	/*Enable hand removal filtering on depth data, removing hands from
+	  the depth image.*/
+	sensor_depth_caps_hand_removal  = 1 << 0,
+} sensor_depth_caps_;
+SK_MakeFlag(sensor_depth_caps_);
+
+/*Is sensor depth available on the current device and backend?*/
+SK_API bool32_t              sensor_depth_available            (void);
+/*Is the sensor depth provider currently running and producing
+  frames?*/
+SK_API bool32_t              sensor_depth_running              (void);
+/*Returns a bitmask of sensor_depth_caps_ indicating which optional
+  features are supported on the current platform and backend.*/
+SK_API sensor_depth_caps_   sensor_depth_get_capabilities     (void);
+/*Starts the sensor depth provider with the given caps. Unsupported
+  caps for the current platform are silently ignored.*/
+SK_API bool32_t              sensor_depth_start                (sensor_depth_caps_ flags sk_default(sensor_depth_caps_none));
+/*Stops the sensor depth provider and releases resources.*/
+SK_API void                  sensor_depth_stop                 (void);
+/*Updates the active caps while the sensor is running. Can enable or
+  disable features like hand removal at runtime. Unsupported caps for
+  the current platform are silently ignored. Returns false if the
+  sensor is not running.*/
+SK_API bool32_t              sensor_depth_set_capabilities     (sensor_depth_caps_ flags);
+/*Returns the system-managed depth texture, or nullptr if no frame has
+  been produced yet. Do not release this texture; it is owned by the
+  system.*/
+SK_API tex_t                 sensor_depth_get_texture          (void);
+/*Retrieves the latest per-frame depth metadata. Returns false if no
+  frame is available yet.*/
+SK_API bool32_t              sensor_depth_try_get_latest_frame (sensor_depth_frame_t* out_frame);
+/*Retrieves the latest CPU-accessible depth data with matching
+  metadata. The readback pipeline starts automatically on the first
+  call and runs asynchronously, so the first few calls may return
+  false. The returned data may be 1-2 frames behind the GPU texture.
+  If out_data is null, only out_data_size is written, so the caller
+  can query the size before allocating.*/
+SK_API bool32_t              sensor_depth_try_get_latest_data  (sensor_depth_frame_t* out_frame, void* out_data, size_t* out_data_size, int32_t view_index sk_default(-1));
 
 ///////////////////////////////////////////
 
@@ -2986,6 +3083,7 @@ SK_CONST char *default_id_shader_ui_aura       = "default/shader_ui_aura";
 SK_CONST char *default_id_shader_sky           = "default/shader_sky";
 SK_CONST char *default_id_shader_lines         = "default/shader_lines";
 SK_CONST char *default_id_shader_sh_compute    = "default/shader_sh_compute";
+SK_CONST char *default_id_shader_depth_prepass = "default/shader_depth_prepass";
 SK_CONST char *default_id_sound_click          = "default/sound_click";
 SK_CONST char *default_id_sound_unclick        = "default/sound_unclick";
 SK_CONST char *default_id_sound_grab           = "default/sound_grab";

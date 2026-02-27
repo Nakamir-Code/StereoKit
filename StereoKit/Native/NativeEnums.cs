@@ -1546,6 +1546,35 @@ namespace StereoKit
 		Timer,
 	}
 
+	/// <summary>Flags that describe which occlusion methods are active or
+	/// available. These can be combined to enable multiple occlusion
+	/// techniques simultaneously.</summary>
+	[Flags]
+	public enum OcclusionCaps {
+		/// <summary>No occlusion is active.</summary>
+		None         = 0,
+		/// <summary>Scene Understanding mesh-based occlusion (e.g. HoloLens).</summary>
+		Mesh         = 1 << 0,
+		/// <summary>Depth texture-based occlusion (e.g. META environment depth).</summary>
+		Depth        = 1 << 1,
+		/// <summary>When combined with Depth: hands will also occlude virtual
+		/// content. Without this flag, hands are removed from the depth
+		/// buffer and will not occlude.</summary>
+		Hands        = 1 << 2,
+	}
+
+	/// <summary>Capabilities for configuring the sensor depth system. These control
+	/// optional features that may or may not be supported on the current
+	/// platform. Check the capabilities for platform support.</summary>
+	[Flags]
+	public enum SensorDepthCaps {
+		/// <summary>No special capabilities.</summary>
+		None         = 0,
+		/// <summary>Enable hand removal filtering on depth data, removing hands from
+		/// the depth image.</summary>
+		HandRemoval  = 1 << 0,
+	}
+
 	/// <summary>This describes what technology is being used to power StereoKit's
 	/// XR backend.</summary>
 	public enum BackendXRType {
