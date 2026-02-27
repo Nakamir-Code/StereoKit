@@ -92,6 +92,9 @@ jobs:
             echo "Changed $(basename "$link") from $current_target to $new_target"
         done
 
+    - name: Install Android SDK Platform
+      run: echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-32"
+
     - name: Build Native Android ARM64
       run: |
         cmake --preset Android_Arm64_Release
