@@ -101,7 +101,7 @@ bool platform_init() {
 #if defined(SK_OS_ANDROID)
 	// Forward Android Context to sk_app so JNI features (clipboard, kvpstore,
 	// file dialogs, asset reading) work in library mode.
-	ska_android_set_context((void*)settings->android_activity);
+	ska_android_set_context(settings->android_activity, settings->android_java_vm);
 #endif
 	if (!ska_init(&ska_settings)) {
 		log_errf("sk_app initialization failed: %s", ska_error_get() ? ska_error_get() : "unknown error");
