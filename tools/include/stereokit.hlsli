@@ -102,4 +102,29 @@ float sk_aspect_ratio(uint view_id) {
 
 ///////////////////////////////////////////
 
+struct sk_ids_t { uint inst; uint view; };
+struct sk_input_t { uint instance_id : SV_InstanceID; };
+
+sk_ids_t sk_resolve_ids(sk_input_t input) {
+	sk_ids_t r;
+#ifdef SKR_NO_LAYER_SELECT
+	r.inst = input.instance_id;
+	r.view = sk_eye_offset;
+#else
+	r.inst = input.instance_id / sk_view_count;
+	r.view = input.instance_id % sk_view_count;
+#endif
+	return r;
+}
+
+#ifdef SKR_NO_LAYER_SELECT
+	#define SK_LAYER_OUTPUT
+	#define SK_SET_LAYER(output, val)
+#else
+	#define SK_LAYER_OUTPUT  uint _sk_layer : SV_RenderTargetArrayIndex;
+	#define SK_SET_LAYER(output, val)  output._sk_layer = val
+#endif
+
+///////////////////////////////////////////
+
 #endif

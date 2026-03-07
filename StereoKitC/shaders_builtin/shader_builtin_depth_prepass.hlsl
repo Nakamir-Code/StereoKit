@@ -24,37 +24,39 @@ struct vsIn {
 struct psIn {
 	float4 pos        : SV_POSITION;
 	float4 depth_clip : TEXCOORD0;
-	uint   view_id    : SV_RenderTargetArrayIndex;
 	uint   eye        : TEXCOORD1;
+	SK_LAYER_OUTPUT
 };
 struct psOut {
 	float  depth : SV_Depth;
 	float4 color : SV_Target0;
 };
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
+psIn vs(vsIn input, sk_input_t sys) {
+	sk_ids_t ids = sk_resolve_ids(sys);
+
 	psIn o;
-	o.view_id = id % sk_view_count;
-	o.pos     = input.pos;
-	o.eye     = sk_eye_offset + o.view_id;
+	o.pos = input.pos;
+	o.eye = ids.view;
 
 	// Unproject screen UV to view-space
 	float2 ndc     = input.uv * 2.0 - 1.0;
-	float4 near_vs = mul(float4(ndc.x, -ndc.y, 0, 1), sk_proj_inv[o.view_id]);
+	float4 near_vs = mul(float4(ndc.x, -ndc.y, 0, 1), sk_proj_inv[ids.view]);
 	near_vs /= near_vs.w;
 
 	// Rotate view-space ray to world space
 	float3x3 view_rot = float3x3(
-		sk_view[o.view_id][0].xyz,
-		sk_view[o.view_id][1].xyz,
-		sk_view[o.view_id][2].xyz);
+		sk_view[ids.view][0].xyz,
+		sk_view[ids.view][1].xyz,
+		sk_view[ids.view][2].xyz);
 	float3 ray_ws = mul(near_vs.xyz, transpose(view_rot));
 
 	// Project a far point along the ray into depth camera clip space
-	float3   cam_pos = sk_camera_pos[o.view_id].xyz;
+	float3   cam_pos = sk_camera_pos[ids.view].xyz;
 	float4x4 dvp     = (o.eye == 0) ? depth_view_proj_l : depth_view_proj_r;
 	o.depth_clip     = mul(dvp, float4(cam_pos + ray_ws * 100.0, 1));
 
+	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 
@@ -77,7 +79,7 @@ psOut ps(psIn input) {
 	float3 world_pos = world_h.xyz / world_h.w;
 
 	// Project world position through rendering camera for z-buffer depth
-	float4 render_clip = mul(float4(world_pos, 1), sk_viewproj[input.view_id]);
+	float4 render_clip = mul(float4(world_pos, 1), sk_viewproj[input.eye]);
 	o.depth = render_clip.z / render_clip.w;
 	o.color = float4(0, 0, 0, 0);
 	return o;

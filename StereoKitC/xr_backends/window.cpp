@@ -112,7 +112,7 @@ bool window_init() {
 	}
 
 	// Use BGRA to match typical swapchain format
-	local->surface = render_pipeline_surface_create(pipeline_render_strategy_sequential, tex_format_bgra32, render_preferred_depth_fmt(), 1, 1, 1);
+	local->surface = render_pipeline_surface_create(tex_format_bgra32, render_preferred_depth_fmt(), 1);
 	if (local->skr_surface.size.x > 0 && local->skr_surface.size.y > 0)
 		window_surface_resize(local->surface, local->skr_surface.size.x, local->skr_surface.size.y);
 

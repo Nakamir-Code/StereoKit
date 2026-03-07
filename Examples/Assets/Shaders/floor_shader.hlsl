@@ -11,17 +11,17 @@ struct vsIn {
 struct psIn {
 	float4 pos   : SV_POSITION;
 	float4 world : TEXCOORD0;
-	uint   view_id : SV_RenderTargetArrayIndex;
+	SK_LAYER_OUTPUT
 };
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
+psIn vs(vsIn input, sk_input_t sys) {
 	psIn o;
-	o.view_id = id % sk_view_count;
-	id        = id / sk_view_count;
+	sk_ids_t ids = sk_resolve_ids(sys);
 
-	o.world = mul(input.pos, sk_inst[id].world);
-	o.pos   = mul(o.world,   sk_viewproj[o.view_id]);
+	o.world = mul(input.pos, sk_inst[ids.inst].world);
+	o.pos   = mul(o.world,   sk_viewproj[ids.view]);
 
+	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 float4 ps(psIn input) : SV_TARGET{

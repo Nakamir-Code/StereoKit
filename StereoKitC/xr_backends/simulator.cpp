@@ -118,7 +118,7 @@ bool simulator_init() {
 	}
 
 	// Use BGRA to match typical swapchain format
-	sim_surface = render_pipeline_surface_create(pipeline_render_strategy_sequential, tex_format_bgra32, render_preferred_depth_fmt(), 1, 1, 1);
+	sim_surface = render_pipeline_surface_create(tex_format_bgra32, render_preferred_depth_fmt(), 1);
 	if (sim_skr_surface.size.x > 0 && sim_skr_surface.size.y > 0)
 		sim_surface_resize(sim_surface, sim_skr_surface.size.x, sim_skr_surface.size.y);
 

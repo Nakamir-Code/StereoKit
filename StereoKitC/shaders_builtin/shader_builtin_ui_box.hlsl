@@ -22,16 +22,15 @@ struct psIn {
 	float4 color : COLOR0;
 	float4 world : TEXCOORD1;
 	float2 scale : TEXCOORD2;
-	uint view_id : SV_RenderTargetArrayIndex;
+	SK_LAYER_OUTPUT
 };
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
-	psIn o;
-	o.view_id = id % sk_view_count;
-	id        = id / sk_view_count;
+psIn vs(vsIn input, sk_input_t sys) {
+	sk_ids_t ids = sk_resolve_ids(sys);
 
+	psIn o;
 	// Extract scale from the matrix
-	float4x4 world_mat = sk_inst[id].world;
+	float4x4 world_mat = sk_inst[ids.inst].world;
 	float3   scale     = float3(
 		length(float3(world_mat._11,world_mat._12,world_mat._13)),
 		length(float3(world_mat._21,world_mat._22,world_mat._23)),
@@ -42,11 +41,12 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 	else if (abs(input.norm.x) > 0.75) o.scale = scale.zy;
 	else                               o.scale = scale.xy;
 
-	o.world = mul(input .pos, sk_inst    [id].world);
-	o.pos   = mul(o.world,    sk_viewproj[o.view_id]);
+	o.world = mul(input .pos, sk_inst    [ids.inst].world);
+	o.pos   = mul(o.world,    sk_viewproj[ids.view]);
 
 	o.uv    = input.uv-0.5;
-	o.color = color * input.col * sk_inst[id].color;
+	o.color = color * input.col * sk_inst[ids.inst].color;
+	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 float4 ps(psIn input) : SV_TARGET {

@@ -18,7 +18,7 @@ struct psIn : sk_ps_input_t {
 	float4 pos   : SV_POSITION;
 	float3 world : TEXCOORD0;
 	float3 normal: NORMAL;
-	uint view_id : SV_RenderTargetArrayIndex;
+	SK_LAYER_OUTPUT
 };
 
 // y = 1/(x^2+1) * (1-x/6)
@@ -38,15 +38,15 @@ float3 sample_lights(float3 world_pos, float3 world_norm) {
 	return result;
 }
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
+psIn vs(vsIn input, sk_input_t sys) {
 	psIn output;
-	output.view_id = id % sk_view_count;
-	id             = id / sk_view_count;
+	sk_ids_t ids = sk_resolve_ids(sys);
 
-	float4 world  = mul(input.pos, sk_inst[id].world);
-	output.pos    = mul(world,     sk_viewproj[output.view_id]);
+	float4 world  = mul(input.pos, sk_inst[ids.inst].world);
+	output.pos    = mul(world,     sk_viewproj[ids.view]);
 	output.world  = world.xyz;
-	output.normal = normalize(mul(input.norm, (float3x3)sk_inst[id].world));
+	output.normal = normalize(mul(input.norm, (float3x3)sk_inst[ids.inst].world));
+	SK_SET_LAYER(output, ids.view);
 	return output;
 }
 float4 ps(psIn input) : SV_TARGET{

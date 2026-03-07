@@ -456,32 +456,13 @@ bool openxr_display_swapchain_update(device_display_t *display) {
 	// With no MSAA, we can draw directly to the swapchain and skip MSAA resolve steps
 	xr_draw_to_swapchain = (s == 1);
 
-	// Vulkan can draw to multiple array texture surfaces simultaneously
-	pipeline_render_strategy_ strategy = pipeline_render_strategy_simultaneous;
-
-	// A "quilt" is a grid of images on a single texture. This terminology is
-	// used for lenticular displays like Looking Glass, and we're using it here
-	// to describe more generically what's happening in a "double wide"
-	// rendering scenario. This gives us some extra ability to experiment with
-	// memory/image layout like "double tall", and possibly more features later.
-	int32_t array_count  = display->view_cap;
-	int32_t quilt_width  = 1;
-	int32_t quilt_height = 1;
-	w = w * quilt_width;
-	h = h * quilt_height;
+	int32_t array_count = display->view_cap;
 
 	// Create the new swapchains for the current size
 	if (!openxr_create_swapchain(&display->swapchain_color, display->type, true,  array_count, xr_preferred_color_format, w, h, 1, s)) return false;
 	if (!openxr_create_swapchain(&display->swapchain_depth, display->type, false, array_count, xr_preferred_depth_format, w, h, 1, s)) return false;
 
-	const char* strategy_name = "";
-	switch (strategy) {
-	case pipeline_render_strategy_none: break;
-	case pipeline_render_strategy_sequential:   strategy_name = "sequential";   break;
-	case pipeline_render_strategy_simultaneous: strategy_name = "simultaneous"; break;
-	case pipeline_render_strategy_multiview:    strategy_name = "multiview";    break;
-	}
-	log_diagf("Set swapchain to %d<~BLK>x<~clr>%d %d<~BLK>msaa<~clr> for <~grn>%s<~clr> using <~grn>%s<~clr> render.", w, h, s, openxr_view_name(display->type), strategy_name);
+	log_diagf("Set swapchain to %d<~BLK>x<~clr>%d %d<~BLK>msaa<~clr> for <~grn>%s<~clr>", w, h, s, openxr_view_name(display->type));
 
 	// Create texture objects if we don't have 'em
 	if (sc_color->textures == nullptr) {
@@ -505,10 +486,9 @@ bool openxr_display_swapchain_update(device_display_t *display) {
 
 		sc_color->render_surface_tex = -1;
 		sc_color->render_surface     = render_pipeline_surface_create(
-			strategy,
 			tex_get_tex_format(xr_preferred_color_format),
 			tex_get_tex_format(xr_preferred_depth_format),
-			array_count, quilt_width, quilt_height);
+			array_count);
 	}
 
 	// Update or set the native textures
