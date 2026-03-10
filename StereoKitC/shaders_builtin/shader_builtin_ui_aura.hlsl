@@ -15,12 +15,9 @@ struct psIn {
 	float4 pos     : SV_Position;
 	float3 world   : TEXCOORD0;
 	half3  color   : COLOR0;
-	SK_LAYER_OUTPUT
 };
 
-psIn vs(vsIn input, sk_input_t sys) {
-	sk_ids_t ids = sk_resolve_ids(sys);
-
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
 	float4x4 world_mat = sk_inst[ids.inst].world;
 
@@ -46,7 +43,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 	o.pos   = mul(world, sk_viewproj[ids.view]);
 	o.world = world.xyz;
 	o.color = lerp(color.rgb, sk_inst[ids.inst].color.rgb, input.color.a) * sk_lighting(normal);
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 

@@ -39,7 +39,6 @@ struct psIn {
 	float4 pos     : SV_POSITION;
 	float2 uv      : TEXCOORD0;
 	float4 color   : COLOR0;
-	SK_LAYER_OUTPUT
 };
 
 float decode_depth(float z, float nearZ, float farZ, float scale, float invalidValue)
@@ -54,9 +53,8 @@ float decode_depth(float z, float nearZ, float farZ, float scale, float invalidV
 	return d * scale;
 }
 
-psIn vs(vsIn input, sk_input_t sys) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	sk_ids_t ids = sk_resolve_ids(sys);
 
 	float2 sample_uv = input.sample_uv.xy;
 	float3 tex_coord = float3(sample_uv.x, 1.0 - sample_uv.y, eye_layer);
@@ -68,7 +66,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 	if (depth_m <= near_clip) {
 		o.pos   = float4(0, 0, -2, 1);
 		o.color = 0;
-		SK_SET_LAYER(o, ids.view);
 		return o;
 	}
 
@@ -98,7 +95,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 		o.color = input.color * color;
 	}
 
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 

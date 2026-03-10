@@ -285,7 +285,7 @@ static skr_device_request_t xr_vulkan_enable2_device_init(void* vk_instance, voi
 // functions. The Vulkan spec only allows global-level functions with a NULL
 // instance. This wrapper substitutes the real VkInstance when NULL is passed.
 static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL xr_vulkan_enable2_get_instance_proc_addr(VkInstance instance, const char* name) {
-	return vkGetInstanceProcAddr(instance == VK_NULL_HANDLE ? skr_get_vk_instance() : VK_NULL_HANDLE, name);
+	return vkGetInstanceProcAddr(instance == VK_NULL_HANDLE ? skr_get_vk_instance() : instance, name);
 }
 
 ///////////////////////////////////////////

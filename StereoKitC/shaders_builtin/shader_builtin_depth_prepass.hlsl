@@ -1,7 +1,6 @@
 #include "stereokit.hlsli"
 //--name = sk/depth_prepass
 
-//--depth_tex
 Texture2DArray depth_tex   : register(t1);
 SamplerState   depth_tex_s : register(s1);
 
@@ -25,16 +24,13 @@ struct psIn {
 	float4 pos        : SV_POSITION;
 	float4 depth_clip : TEXCOORD0;
 	uint   eye        : TEXCOORD1;
-	SK_LAYER_OUTPUT
 };
 struct psOut {
 	float  depth : SV_Depth;
 	float4 color : SV_Target0;
 };
 
-psIn vs(vsIn input, sk_input_t sys) {
-	sk_ids_t ids = sk_resolve_ids(sys);
-
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
 	o.pos = input.pos;
 	o.eye = ids.view;
@@ -56,7 +52,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 	float4x4 dvp     = (o.eye == 0) ? depth_view_proj_l : depth_view_proj_r;
 	o.depth_clip     = mul(dvp, float4(cam_pos + ray_ws * 100.0, 1));
 
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 

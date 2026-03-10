@@ -22,16 +22,13 @@ struct vsIn {
 struct psIn : sk_ps_input_t {
 	float4 pos : SV_POSITION;
 	float2 uv  : TEXCOORD0;
-	SK_LAYER_OUTPUT
 };
 
-psIn vs(vsIn input, sk_input_t sys) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	sk_ids_t ids = sk_resolve_ids(sys);
 
 	o.pos = input.pos;
 	o.uv  = input.uv;
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 

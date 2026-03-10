@@ -22,12 +22,9 @@ struct psIn {
 	float4 color : COLOR0;
 	float4 world : TEXCOORD1;
 	float2 scale : TEXCOORD2;
-	SK_LAYER_OUTPUT
 };
 
-psIn vs(vsIn input, sk_input_t sys) {
-	sk_ids_t ids = sk_resolve_ids(sys);
-
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
 	// Extract scale from the matrix
 	float4x4 world_mat = sk_inst[ids.inst].world;
@@ -46,7 +43,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 
 	o.uv    = input.uv-0.5;
 	o.color = color * input.col * sk_inst[ids.inst].color;
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 float4 ps(psIn input) : SV_TARGET {

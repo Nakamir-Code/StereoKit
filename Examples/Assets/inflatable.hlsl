@@ -20,12 +20,10 @@ struct psIn {
 	float4 pos   : SV_POSITION;
 	float2 uv    : TEXCOORD0;
 	float4 color : COLOR0;
-	SK_LAYER_OUTPUT
 };
 
-psIn vs(vsIn input, sk_input_t sys) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	sk_ids_t ids = sk_resolve_ids(sys);
 
 	float3 world  = mul(float4(input.pos.xyz, 1), sk_inst[ids.inst].world).xyz;
 	float3 normal = mul(input.norm, (float3x3)sk_inst[ids.inst].world);
@@ -34,7 +32,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 
 	o.uv    = input.uv;
 	o.color = input.col * color * sk_inst[ids.inst].color;
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 float4 ps(psIn input) : SV_TARGET {

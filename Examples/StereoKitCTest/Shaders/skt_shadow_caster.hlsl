@@ -10,18 +10,15 @@ struct vsIn {
 };
 struct psIn {
 	float4 pos     : SV_Position;
-	SK_LAYER_OUTPUT
 };
 
 ///////////////////////////////////////////
 
-psIn vs(vsIn input, sk_input_t sys) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	sk_ids_t ids = sk_resolve_ids(sys);
 
 	float4 world = mul(input.pos, sk_inst[ids.inst].world);
 	o.pos        = mul(world,     sk_viewproj[ids.view]);
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 

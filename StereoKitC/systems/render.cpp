@@ -64,10 +64,6 @@ struct render_global_buffer_t {
 	uint32_t view_count;
 	uint32_t eye_offset;
 };
-static const skr_pass_view_desc_t sk_view_desc = {
-	(int32_t)offsetof(render_global_buffer_t, view_count),
-	(int32_t)offsetof(render_global_buffer_t, eye_offset),
-};
 
 struct render_blit_data_t {
 	float width;
@@ -817,7 +813,7 @@ void render_draw_queue(render_list_t list, const matrix *views, const matrix *pr
 
 void render_pass_add_draw(skr_pass_t* pass) {
 	skr_pass_add_draw(pass, &local.gpu_render_list,
-		&local.global_buffer, sizeof(local.global_buffer), &sk_view_desc);
+		&local.global_buffer, sizeof(local.global_buffer));
 }
 
 ///////////////////////////////////////////

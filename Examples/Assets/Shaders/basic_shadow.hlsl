@@ -35,14 +35,12 @@ struct psIn {
 	float  shadow_ndotl : TEXCOORD3;
 	float4 color        : COLOR0;
 	float3 ambient      : COLOR1;
-	SK_LAYER_OUTPUT
 };
 
 ///////////////////////////////////////////
 
-psIn vs(vsIn input, sk_input_t sys) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	sk_ids_t ids = sk_resolve_ids(sys);
 
 	float4 world = mul(input.pos, sk_inst[ids.inst].world);
 	o.pos        = mul(world,     sk_viewproj[ids.view]);
@@ -73,7 +71,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 	// For real applications, this would be 1.0, but all Materials would use
 	// the directional light in addition to the ambient light.
 	o.ambient    = sk_lighting(normal) * 0.5;
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 

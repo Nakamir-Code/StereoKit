@@ -20,12 +20,10 @@ struct psIn {
 	float  alpha      : TEXCOORD1;
 	float  glow_mask  : TEXCOORD2;
 	nointerpolation uint view_id : BLENDINDICES0;
-	SK_LAYER_OUTPUT
 };
 
-psIn vs(vsIn input, sk_input_t sys) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	sk_ids_t ids = sk_resolve_ids(sys);
 
 	// Extract scale from the matrix
 	float4x4 world_mat = sk_inst[ids.inst].world;
@@ -52,7 +50,6 @@ psIn vs(vsIn input, sk_input_t sys) {
 	o.alpha          = input.color.b > 0.5 ? 1 : o.inst_col.a;
 	o.glow_mask      = input.color.g;
 	o.view_id = ids.view;
-	SK_SET_LAYER(o, ids.view);
 	return o;
 }
 
