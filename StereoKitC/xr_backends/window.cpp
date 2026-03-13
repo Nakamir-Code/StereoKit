@@ -43,6 +43,7 @@ namespace sk {
 
 void window_physical_key_interact();
 void window_surface_resize       (pipeline_surface_id surface, int32_t width, int32_t height);
+bool window_skr_surface_create   (const ska_window_t* window, skr_surface_t* out_surface);
 
 ///////////////////////////////////////////
 
@@ -91,20 +92,8 @@ bool window_init() {
 	}
 
 	// Create Vulkan surface for the window
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	if (!ska_vk_create_surface(local->ska_win, skr_get_vk_instance(), &vk_surface)) {
-		log_errf("Failed to create Vulkan surface: %s", ska_error_get() ? ska_error_get() : "unknown error");
+	if (!window_skr_surface_create(local->ska_win, &local->skr_surface)) {
 		log_fail_reason(90, log_error, "Vulkan surface creation failed");
-		ska_window_destroy(local->ska_win);
-		sk_free(local);
-		local = nullptr;
-		return false;
-	}
-
-	// Create skr_surface_t from the Vulkan surface
-	if (skr_surface_create(vk_surface, &local->skr_surface) != skr_err_success) {
-		log_fail_reason(90, log_error, "Failed to create renderer surface");
-		vkDestroySurfaceKHR(skr_get_vk_instance(), vk_surface, nullptr);
 		ska_window_destroy(local->ska_win);
 		sk_free(local);
 		local = nullptr;
@@ -131,9 +120,23 @@ void window_physical_key_interact() {
 void window_surface_resize(pipeline_surface_id surface, int32_t width, int32_t height) {
 	device_data.display_width  = width;
 	device_data.display_height = height;
+	render_pipeline_surface_resize(surface, width, height, 8);
+}
 
-	if (render_pipeline_surface_resize(surface, width, height, 8))
-		render_update_projection();
+///////////////////////////////////////////
+
+bool window_skr_surface_create(const ska_window_t* window, skr_surface_t* out_surface) {
+	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
+	if (!ska_vk_create_surface(window, skr_get_vk_instance(), &vk_surface)) {
+		log_errf("Failed to create Vulkan surface: %s", ska_error_get());
+		return false;
+	}
+	if (skr_surface_create(vk_surface, out_surface) != skr_err_success) {
+		log_err("Failed to create renderer surface");
+		vkDestroySurfaceKHR(skr_get_vk_instance(), vk_surface, nullptr);
+		return false;
+	}
+	return true;
 }
 
 ///////////////////////////////////////////
@@ -170,10 +173,19 @@ void window_step_begin() {
 			ska_handle_event(&evt);
 			window_physical_key_interact();
 			break;
-		// Backend-specific: window resize updates our surface
-		case ska_event_window_resized:
-			window_surface_resize(local->surface, maxi(1, evt.window.data1), maxi(1, evt.window.data2));
-			skr_surface_resize(&local->skr_surface);
+		// Native window destroyed (screen off, app backgrounded) — VkSurfaceKHR is now invalid
+		case ska_event_window_hidden:
+			log_diag("Window hidden - destroying surface");
+			vkDeviceWaitIdle(skr_get_vk_device());
+			skr_surface_destroy(&local->skr_surface);
+			break;
+		// New native window available — recreate Vulkan surface
+		case ska_event_window_shown:
+			// Skip the initial shown event: the surface was already created during startup
+			if (skr_surface_is_valid(&local->skr_surface)) break;
+			if (!window_skr_surface_create(local->ska_win, &local->skr_surface)) break;
+			if (local->skr_surface.size.x > 0 && local->skr_surface.size.y > 0)
+				window_surface_resize(local->surface, local->skr_surface.size.x, local->skr_surface.size.y);
 			break;
 		// All other events use common handling
 		default:
@@ -200,11 +212,30 @@ void window_step_end() {
 	render_pipeline_surface_set_perspective(local->surface, &view, &proj, 1);
 
 	// Acquire swapchain image before rendering - it becomes the MSAA resolve target
-	render_pipeline_surface_acquire_swapchain(local->surface, &local->skr_surface);
+	skr_acquire_ acquire = skr_acquire_success;
+	if (skr_surface_is_valid(&local->skr_surface)) {
+		acquire = render_pipeline_surface_acquire_swapchain(local->surface, &local->skr_surface);
+		render_pipeline_surface_set_enabled(local->surface, acquire == skr_acquire_success);
+	}
 
+	// The render pipeline works with more than just our sim_surface, so we
+	// can't skip it based on sim_surface validity
 	render_pipeline_draw();
 
-	render_pipeline_surface_present_swapchain(local->surface, &local->skr_surface);
+	if (skr_surface_is_valid(&local->skr_surface))
+		render_pipeline_surface_present_swapchain(local->surface, &local->skr_surface);
+	else
+		render_pipeline_skip_present();
+
+	// Resize AFTER frame_end (not mid-frame) to avoid command buffer ref_count imbalance
+	if (acquire == skr_acquire_needs_resize && skr_surface_is_valid(&local->skr_surface)) {
+		skr_surface_resize(&local->skr_surface);
+		if (local->skr_surface.size.x > 0 && local->skr_surface.size.y > 0)
+			window_surface_resize(local->surface, local->skr_surface.size.x, local->skr_surface.size.y);
+	} else if (acquire == skr_acquire_surface_lost) {
+		vkDeviceWaitIdle(skr_get_vk_device());
+		skr_surface_destroy(&local->skr_surface);
+	}
 }
 
 }

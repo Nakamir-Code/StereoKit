@@ -166,6 +166,7 @@ bool32_t render_pipeline_surface_resize(pipeline_surface_id surface_id, int32_t 
 	surface->multisample = multisample;
 	tex_set_color_arr(surface->tex, width, height, nullptr, surface->array_count, multisample, nullptr);
 
+	render_update_projection();
 	return true;
 }
 
@@ -184,10 +185,6 @@ skr_acquire_ render_pipeline_surface_acquire_swapchain(pipeline_surface_id surfa
 		surface->resolve_target = target;
 	} else {
 		surface->resolve_target = nullptr;
-
-		if (acquire_result == skr_acquire_needs_resize) {
-			skr_surface_resize(skr_surface);
-		}
 	}
 
 	return acquire_result;

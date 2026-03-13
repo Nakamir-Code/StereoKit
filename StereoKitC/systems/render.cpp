@@ -236,9 +236,8 @@ bool render_init() {
 	skr_render_list_create(&local.gpu_render_list);
 
 	// Setup a default camera
-	render_set_clip         (local.clip_planes.x, local.clip_planes.y);
-	render_set_cam_root     (matrix_identity);
-	render_update_projection();
+	render_set_clip    (local.clip_planes.x, local.clip_planes.y);
+	render_set_cam_root(matrix_identity);
 
 	local.list_primary = render_list_create();
 	render_list_set_id(local.list_primary, "sk/render/primary_renderlist");
