@@ -1,8 +1,8 @@
 #include "stereokit.hlsli"
 
-//--name        = sk/lines
-//--color:color = 1,1,1,1
-float4 color;
+//--name = sk/lines
+
+float4 color = {1,1,1,1};
 
 struct vsIn {
 	float4 pos    : SV_Position;

@@ -2,13 +2,10 @@
 
 //--name = sk/unlit
 
-//--color:color = 1, 1, 1, 1
-//--tex_trans   = 0,0,1,1
-//--diffuse     = white
+float4 color     = {1,1,1,1};
+float4 tex_trans = {0,0,1,1};
 
-float4       color;
-float4       tex_trans;
-
+//--diffuse = white
 Texture2D    diffuse   : register(t0);
 SamplerState diffuse_s : register(s0);
 
@@ -26,7 +23,7 @@ struct psIn {
 
 psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	float4 world = mul(float4(input.pos.xyz, 1), sk_inst[ids.inst].world);
+	float4 world = mul(float4(input.pos.xyz, 1), sk_inst    [ids.inst].world);
 	o.pos        = mul(world,                    sk_viewproj[ids.view]);
 
 	o.uv    = (input.uv * tex_trans.zw) + tex_trans.xy;

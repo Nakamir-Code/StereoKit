@@ -1,9 +1,8 @@
 #include "stereokit.hlsli"
 
 //--name = sk/default_ui_quadrant_aura
-//--color:color = 1, 1, 1, 1
 
-float4 color;
+float4 color = {1,1,1,1};
 
 struct vsIn {
 	float4 pos      : SV_Position;

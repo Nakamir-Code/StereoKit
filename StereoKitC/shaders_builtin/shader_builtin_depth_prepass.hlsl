@@ -4,15 +4,10 @@
 Texture2DArray depth_tex   : register(t1);
 SamplerState   depth_tex_s : register(s1);
 
-//--depth_view_proj_l = 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
-float4x4 depth_view_proj_l;
-//--depth_view_proj_r = 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
-float4x4 depth_view_proj_r;
-
-//--depth_view_proj_inv_l = 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
-float4x4 depth_view_proj_inv_l;
-//--depth_view_proj_inv_r = 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
-float4x4 depth_view_proj_inv_r;
+float4x4 depth_view_proj_l      = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+float4x4 depth_view_proj_r      = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+float4x4 depth_view_proj_inv_l  = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+float4x4 depth_view_proj_inv_r  = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
 
 struct vsIn {
 	float4 pos  : SV_Position;

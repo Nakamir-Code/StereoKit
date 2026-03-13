@@ -1,13 +1,13 @@
 #include "stereokit.hlsli"
+
 //--name = sk/lightmap
 
-//--tex_trans = 0,0,1,1
-//--diffuse   = white
-//--lightmap  = white
+float4 tex_trans = {0,0,1,1};
 
-float4       tex_trans;
+//--diffuse = white
 Texture2D    diffuse    : register(t0);
 SamplerState diffuse_s  : register(s0);
+//--lightmap = white
 Texture2D    lightmap   : register(t1);
 SamplerState lightmap_s : register(s1);
 

@@ -2,14 +2,11 @@
 
 //--name = sk/unlit_clip
 
-//--color:color = 1, 1, 1, 1
-//--tex_trans   = 0,0,1,1
-//--diffuse     = white
-//--cutoff      = 0.01
+float4 color     = {1,1,1,1};
+float4 tex_trans = {0,0,1,1};
+float  cutoff    = 0.01;
 
-float4       color;
-float4       tex_trans;
-float        cutoff;
+//--diffuse = white
 Texture2D    diffuse   : register(t0);
 SamplerState diffuse_s : register(s0);
 
