@@ -801,6 +801,8 @@ bool openxr_render_frame() {
 			render_pipeline_surface_set_enabled(display->swapchain_color.render_surface, display->active);
 			if (!display->active) continue;
 
+			render_pipeline_surface_set_viewport_scale(display->swapchain_color.render_surface, render_get_viewport_scaling());
+
 			if (!openxr_display_locate           (display, xr_time) ||
 				!openxr_display_swapchain_acquire(display, render_get_clear_color_ln(), render_get_filter()))
 			{
@@ -826,6 +828,8 @@ bool openxr_render_frame() {
 			if (display->swapchain_color.render_surface < 0) continue;
 			render_pipeline_surface_set_enabled(display->swapchain_color.render_surface, display->active);
 			if (!display->active) continue;
+
+			render_pipeline_surface_set_viewport_scale(display->swapchain_color.render_surface, render_get_viewport_scaling());
 
 			if (!openxr_display_locate           (display, xr_time) ||
 				!openxr_display_swapchain_acquire(display, render_get_clear_color_ln(), render_get_capture_filter()))
@@ -1007,9 +1011,8 @@ bool openxr_display_swapchain_acquire(device_display_t* display, color128 color,
 		render_pipeline_surface_set_resolve_target(display->swapchain_color.render_surface, &display->swapchain_color.textures[color_id]->gpu_tex);
 	}
 	display->swapchain_color.render_surface_tex = color_id;
-	render_pipeline_surface_set_clear         (display->swapchain_color.render_surface, color);
-	render_pipeline_surface_set_layer         (display->swapchain_color.render_surface, render_filter);
-	render_pipeline_surface_set_viewport_scale(display->swapchain_color.render_surface, render_get_viewport_scaling());
+	render_pipeline_surface_set_clear(display->swapchain_color.render_surface, color);
+	render_pipeline_surface_set_layer(display->swapchain_color.render_surface, render_filter);
 
 	return true;
 }
