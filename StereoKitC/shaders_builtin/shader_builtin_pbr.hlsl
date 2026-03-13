@@ -3,16 +3,11 @@
 
 //--name = sk/pbr
 
-//--color:color           = 1,1,1,1
-//--emission_factor:color = 0,0,0,0
-//--metallic              = 0
-//--roughness             = 1
-//--tex_trans             = 0,0,1,1
-float4 color;
-float4 emission_factor;
-float4 tex_trans;
-float  metallic;
-float  roughness;
+float4 color           = {1,1,1,1};
+float4 emission_factor = {0,0,0,0};
+float4 tex_trans       = {0,0,1,1};
+float  metallic        = 0;
+float  roughness       = 1;
 
 //--diffuse   = white
 //--emission  = white

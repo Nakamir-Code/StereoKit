@@ -1,14 +1,11 @@
 #include "stereokit.hlsli"
 
 //--name = sk/default_ui_box
-//--color:color = .6, .6, .6, 1
-//--border_size = 0.005
-//--border_size_grow = 0.01
-//--border_affect_radius = 0.2
-float4       color;
-float        border_size;
-float        border_size_grow;
-float        border_affect_radius;
+
+float4 color                = {.6, .6, .6, 1};
+float  border_size          = 0.005;
+float  border_size_grow     = 0.01;
+float  border_affect_radius = 0.2;
 
 struct vsIn {
 	float4 pos  : SV_Position;
