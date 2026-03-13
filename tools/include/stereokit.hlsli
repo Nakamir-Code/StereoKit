@@ -97,8 +97,21 @@ half sk_finger_glow(float3 world_pos) {
 ///////////////////////////////////////////
 
 float sk_aspect_ratio(uint view_id) {
-	return sk_proj[view_id]._m11 / sk_proj[view_id]._m00;
+	// Load the full matrix first to avoid deep ViewIndex access chains
+	// in SPIR-V. Adreno's multiview linker fails when ViewIndex is a
+	// non-terminal index in an OpAccessChain.
+	float4x4 proj = sk_proj[view_id];
+	return proj._m11 / proj._m00;
 }
+
+///////////////////////////////////////////
+
+// System vertex IDs — multiview provides SV_ViewID via the driver,
+// SV_InstanceID is the real instance index (no view packing).
+struct sk_ids_t {
+	uint inst : SV_InstanceID;
+	uint view : SV_ViewID;
+};
 
 ///////////////////////////////////////////
 

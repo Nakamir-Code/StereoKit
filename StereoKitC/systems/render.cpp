@@ -32,6 +32,7 @@
 
 #include <sk_renderer.h>
 #include <limits.h>
+#include <stddef.h>
 #include <stdio.h>
 
 #define STBIW_WINDOWS_UTF8
@@ -40,6 +41,8 @@
 using namespace DirectX;
 
 namespace sk {
+
+static void render_list_execute(render_list_t list, render_layer_ filter, int32_t material_variant, int32_t queue_start, int32_t queue_end);
 
 ///////////////////////////////////////////
 
@@ -61,6 +64,7 @@ struct render_global_buffer_t {
 	uint32_t view_count;
 	uint32_t eye_offset;
 };
+
 struct render_blit_data_t {
 	float width;
 	float height;
@@ -232,9 +236,8 @@ bool render_init() {
 	skr_render_list_create(&local.gpu_render_list);
 
 	// Setup a default camera
-	render_set_clip         (local.clip_planes.x, local.clip_planes.y);
-	render_set_cam_root     (matrix_identity);
-	render_update_projection();
+	render_set_clip    (local.clip_planes.x, local.clip_planes.y);
+	render_set_cam_root(matrix_identity);
 
 	local.list_primary = render_list_create();
 	render_list_set_id(local.list_primary, "sk/render/primary_renderlist");
@@ -732,7 +735,7 @@ void render_add_model(model_t model, const matrix &transform, color128 color_lin
 
 ///////////////////////////////////////////
 
-void render_draw_queue(render_list_t list, const matrix *views, const matrix *projections, int32_t eye_offset, int32_t view_count, int32_t inst_multiplier, render_layer_ filter, int32_t material_variant) {
+void render_draw_queue(render_list_t list, const matrix *views, const matrix *projections, int32_t eye_offset, int32_t view_count, render_layer_ filter, int32_t material_variant) {
 	// A temporary fix for multiview trying to render to mono rendertargets
 	if (view_count == 1) {
 		memset(&local.global_buffer.view      [1], 0, sizeof(local.global_buffer.view      [1]));
@@ -802,7 +805,14 @@ void render_draw_queue(render_list_t list, const matrix *views, const matrix *pr
 		}
 	}
 
-	render_list_execute(list, filter, material_variant, inst_multiplier, 0, INT_MAX);
+	render_list_execute(list, filter, material_variant, 0, INT_MAX);
+}
+
+///////////////////////////////////////////
+
+void render_pass_add_draw(skr_pass_t* pass) {
+	skr_pass_add_draw(pass, &local.gpu_render_list,
+		&local.global_buffer, sizeof(local.global_buffer));
 }
 
 ///////////////////////////////////////////
@@ -878,17 +888,22 @@ void render_check_screenshots() {
 		if (local.screenshot_list[i].clear & render_clear_color) clear_flags = (skr_clear_)(clear_flags | skr_clear_color);
 		if (local.screenshot_list[i].clear & render_clear_depth) clear_flags = (skr_clear_)(clear_flags | skr_clear_depth | skr_clear_stencil);
 
-		// Begin render pass
-		skr_vec4_t clear_color = { local.clear_col.r, local.clear_col.g, local.clear_col.b, local.clear_col.a };
-		skr_renderer_begin_pass(&color_surface->gpu_tex, &depth_surface->gpu_tex, &resolve_tex->gpu_tex, clear_flags, clear_color, 1.0f, 0);
-		skr_renderer_set_viewport(viewport);
-		skr_renderer_set_scissor (scissor);
-
 		// Render!
-		render_draw_queue(local.list_primary, &local.screenshot_list[i].camera, &local.screenshot_list[i].projection, 0, 1, 1, local.screenshot_list[i].layer_filter, 0);
+		skr_vec4_t clear_color = { local.clear_col.r, local.clear_col.g, local.clear_col.b, local.clear_col.a };
+		render_draw_queue(local.list_primary, &local.screenshot_list[i].camera, &local.screenshot_list[i].projection, 0, 1, local.screenshot_list[i].layer_filter, 0);
 
-		// End render pass
-		skr_renderer_end_pass();
+		skr_pass_t pass = {};
+		pass.color       = &color_surface->gpu_tex;
+		pass.depth       = &depth_surface->gpu_tex;
+		pass.resolve     = &resolve_tex->gpu_tex;
+		pass.clear       = clear_flags;
+		pass.clear_color = clear_color;
+		pass.clear_depth = 1.0f;
+		pass.viewport    = viewport;
+		pass.scissor     = scissor;
+		pass.view_count  = 1;
+		render_pass_add_draw(&pass);
+		skr_pass_submit(&pass);
 
 		// Initiate async readback (will complete in a future frame after GPU finishes)
 		render_pending_readback_t pending = {};
@@ -948,17 +963,21 @@ void render_draw_viewpoint(render_action_viewpoint_t* vp) {
 	if (!depth_only && (vp->clear & render_clear_color)) clear_flags = (skr_clear_)(clear_flags | skr_clear_color);
 	if (vp->clear & render_clear_depth) clear_flags = (skr_clear_)(clear_flags | skr_clear_depth | skr_clear_stencil);
 
-	// Begin render pass
-	skr_vec4_t clear_color = { local.clear_col.r, local.clear_col.g, local.clear_col.b, local.clear_col.a };
-	skr_renderer_begin_pass(color_tex, depth_tex, nullptr, clear_flags, clear_color, 1.0f, 0);
-	skr_renderer_set_viewport(viewport);
-	skr_renderer_set_scissor (scissor);
-
 	// Render!
-	render_draw_queue(local.list_primary, &vp->camera, &vp->projection, 0, 1, 1, vp->layer_filter, vp->material_variant);
+	skr_vec4_t clear_color = { local.clear_col.r, local.clear_col.g, local.clear_col.b, local.clear_col.a };
+	render_draw_queue(local.list_primary, &vp->camera, &vp->projection, 0, 1, vp->layer_filter, vp->material_variant);
 
-	// End render pass
-	skr_renderer_end_pass();
+	skr_pass_t pass = {};
+	pass.color       = color_tex;
+	pass.depth       = depth_tex;
+	pass.clear       = clear_flags;
+	pass.clear_color = clear_color;
+	pass.clear_depth = 1.0f;
+	pass.viewport    = viewport;
+	pass.scissor     = scissor;
+	pass.view_count  = 1;
+	render_pass_add_draw(&pass);
+	skr_pass_submit(&pass);
 
 	// Release the reference we added, the user should have their own ref
 	tex_release(vp->rendertarget);
@@ -1178,7 +1197,7 @@ void render_list_add_to(render_list_t list, const render_item_t *item) {
 
 ///////////////////////////////////////////
 
-void render_list_execute(render_list_t list, render_layer_ filter, int32_t material_variant, uint32_t inst_multiplier, int32_t queue_start, int32_t queue_end) {
+static void render_list_execute(render_list_t list, render_layer_ filter, int32_t material_variant, int32_t queue_start, int32_t queue_end) {
 	list->state = render_list_state_rendering;
 
 	if (list->queue.count == 0) {
@@ -1232,11 +1251,6 @@ void render_list_execute(render_list_t list, render_layer_ filter, int32_t mater
 			0, item->mesh_inds, 0,
 			&inst, sizeof(inst), 1);
 	}
-
-	// Draw everything via sk_renderer
-	skr_renderer_draw(gpu_list,
-		&local.global_buffer, sizeof(local.global_buffer),
-		inst_multiplier);
 
 	list->state = render_list_state_rendered;
 }
@@ -1355,17 +1369,21 @@ void render_list_draw_now(render_list_t list, tex_t to_rendertarget, matrix came
 	if (clear & render_clear_color) clear_flags = (skr_clear_)(clear_flags | skr_clear_color);
 	if (depth_surface && (clear & render_clear_depth)) clear_flags = (skr_clear_)(clear_flags | skr_clear_depth | skr_clear_stencil);
 
-	// Begin render pass
-	skr_vec4_t skr_clear_color = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
-	skr_renderer_begin_pass(&to_rendertarget->gpu_tex, depth_surface ? &depth_surface->gpu_tex : nullptr, nullptr, clear_flags, skr_clear_color, 1.0f, 0);
-	skr_renderer_set_viewport(viewport);
-	skr_renderer_set_scissor (scissor);
-
 	// Render!
-	render_draw_queue(list, &camera, &projection, 0, 1, 1, layer_filter, material_variant);
+	skr_vec4_t skr_clear_color = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
+	render_draw_queue(list, &camera, &projection, 0, 1, layer_filter, material_variant);
 
-	// End render pass
-	skr_renderer_end_pass();
+	skr_pass_t pass = {};
+	pass.color       = &to_rendertarget->gpu_tex;
+	pass.depth       = depth_surface ? &depth_surface->gpu_tex : nullptr;
+	pass.clear       = clear_flags;
+	pass.clear_color = skr_clear_color;
+	pass.clear_depth = 1.0f;
+	pass.viewport    = viewport;
+	pass.scissor     = scissor;
+	pass.view_count  = 1;
+	render_pass_add_draw(&pass);
+	skr_pass_submit(&pass);
 }
 
 } // namespace sk

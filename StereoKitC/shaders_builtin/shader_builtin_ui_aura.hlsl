@@ -15,15 +15,11 @@ struct psIn {
 	float4 pos     : SV_Position;
 	float3 world   : TEXCOORD0;
 	half3  color   : COLOR0;
-	uint view_id : SV_RenderTargetArrayIndex;
 };
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	o.view_id = id % sk_view_count;
-	id        = id / sk_view_count;
-
-	float4x4 world_mat = sk_inst[id].world;
+	float4x4 world_mat = sk_inst[ids.inst].world;
 
 	// Quadrant offset uses the original (scaled) rows directly:
 	// scale * normalized_row = original_row, so no explicit scale needed.
@@ -39,14 +35,14 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 	world_mat[2] *= rsqrt(dot(row2, row2));
 
 	float4 sized_pos = input.pos;
-	sized_pos.xyz += input.norm * sk_inst[id].color.a * 0.002;
+	sized_pos.xyz += input.norm * sk_inst[ids.inst].color.a * 0.002;
 
 	float4 world  = mul(sized_pos, world_mat);
 	world.xyz    += quadrant_offset;
 	float3 normal = normalize(mul(input.norm, (float3x3)world_mat));
-	o.pos   = mul(world, sk_viewproj[o.view_id]);
+	o.pos   = mul(world, sk_viewproj[ids.view]);
 	o.world = world.xyz;
-	o.color = lerp(color.rgb, sk_inst[id].color.rgb, input.color.a) * sk_lighting(normal);
+	o.color = lerp(color.rgb, sk_inst[ids.inst].color.rgb, input.color.a) * sk_lighting(normal);
 	return o;
 }
 

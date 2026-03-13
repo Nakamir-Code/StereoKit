@@ -693,6 +693,7 @@ XrAction oxri_get_or_create_action(xra_type_ type, uint32_t xra_val) {
 			default:                       oxri_make_action_default(&action_info, 2, "xy", xra_val); break;
 			}
 			break;
+		case xra_type_max: break;
 		}
 
 		XrResult xr = xrCreateAction(local.action_set, &action_info, &result);

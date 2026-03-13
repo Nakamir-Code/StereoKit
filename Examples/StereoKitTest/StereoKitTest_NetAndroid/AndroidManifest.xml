@@ -45,8 +45,12 @@
 	<uses-permission android:name="android.permission.EYE_TRACKING_FINE" />
 
 	<!-- Vive specific items  -->
-	<uses-feature android:name="wave.feature.handtracking" android:required="false"/>
-	<uses-feature android:name="wave.feature.tracker"      android:required="false"/>
+	<meta-data android:name="no_controller_pairing" android:value="true" />
+	<uses-feature android:name="wave.feature.handtracking"    android:required="false"/>
+	<uses-feature android:name="wave.feature.tracker"         android:required="false"/>
+	<uses-feature android:name="wave.feature.eyetracking"     android:required="false" />
+	<uses-feature android:name="wave.feature.sceneperception" android:required="false" />
+	<uses-feature android:name="wave.feature.marker"          android:required="true" />
 
 	<!-- Snapdragon specific items -->
 	<uses-permission android:name="com.qualcomm.qti.qxr.QXRServiceClientPermission" android:required="false"/>

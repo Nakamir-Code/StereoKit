@@ -28,7 +28,8 @@ endif()
 project(StereoKit VERSION "0.4.0" LANGUAGES CXX C)
 
 # Add this repository's cmake modules to CMAKE_MODULE_PATH
-list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
+# Ensure our cmake/ folder is in path first to override FindMetalTools (skip Metal on macOS)
+list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 ###########################################
 ## Options                               ##
@@ -41,7 +42,9 @@ set(SK_BUILD_SHARED_LIBS            ON  CACHE BOOL "Should StereoKit build as a 
 set(SK_DYNAMIC_OPENXR               OFF CACHE BOOL "Dynamic link with the standard OpenXR Loader. Not what you want on desktop, but on Android you may need to dynamic link with other loaders.")
 set(SK_WINDOWS_GL                   OFF CACHE BOOL "Build Windows version using OpenGL as the renderer. This is primarily for debugging GL code while developing on Windows.")
 set(SK_LOCAL_SK_RENDERER            OFF CACHE BOOL "Build using a local version of sk_renderer, instead of the latest release. This is useful for testing in-progress changes to sk_renderer.")
+set(SK_LOCAL_SK_APP                 OFF CACHE BOOL "Build using a local version of sk_app, instead of the latest release. This is useful for testing in-progress changes to sk_app.")
 set(SK_PROFILE                      OFF CACHE BOOL "Build with Tracy profiler enabled.")
+set(SK_STRIP_DEBUG_SYMBOLS          ON  CACHE BOOL "Strip debug symbols from the shared library. Disable on Android to keep symbols embedded for native debugging.")
 set(FORCE_COLORED_OUTPUT            OFF CACHE BOOL "Always produce ANSI-colored output (GNU/Clang only).")
 
 ###########################################
@@ -126,7 +129,25 @@ elseif(EMSCRIPTEN)
     -sALLOW_MEMORY_GROWTH=1
     -g
     -gsource-map )
+elseif (APPLE)
+  # macOS-specific settings
+  set(MACOS_LIBS
+    Threads::Threads
+    "-framework Cocoa"
+    "-framework CoreText"
+    "-framework IOKit" )
+
+  # Add pthreads
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+
+  # Apple Silicon uses arm64, Intel Macs use x86_64
+  if (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    add_compile_options(-mavx -mf16c)
+  endif()
+
 elseif (UNIX)
+  # Linux-specific settings
   set(LINUX_LIBS
     Threads::Threads
     X11
@@ -185,6 +206,7 @@ if (SK_BUILD_OPENXR_LOADER)
     GIT_TAG release-1.1.49
     GIT_SHALLOW 1
     OPTIONS
+    "BUILD_ALL_EXTENSIONS OFF" # Only need Vulkan, not Metal/OpenGL
     "BUILD_WITH_SYSTEM_JSONCPP OFF"
     "BUILD_WITH_XCB_HEADERS OFF"
     "DYNAMIC_LOADER ${SK_DYNAMIC_OPENXR}"
@@ -247,14 +269,14 @@ if (SK_PROFILE)
   set_target_properties(TracyClient PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 
-#### sk_gpu - https://github.com/StereoKit/sk_renderer ####
+#### sk_renderer - https://github.com/StereoKit/sk_renderer ####
 set(SKR_ENABLE_STATIC_ANALYSIS OFF CACHE PATH "Faster build" FORCE)
 set(SKR_BUILD_EXAMPLES OFF CACHE PATH "Faster build" FORCE)
 if (NOT SK_LOCAL_SK_RENDERER)
   CPMAddPackage(
     NAME sk_renderer
     GITHUB_REPOSITORY StereoKit/sk_renderer
-    GIT_TAG v2026.2.13
+    GIT_TAG v2026.3.11
   )
 else()
   # For building directly with in-progress sk_renderer changes, point this to your
@@ -266,6 +288,21 @@ set_target_properties(sk_renderer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(WIN32)
   target_compile_definitions(volk PUBLIC VK_USE_PLATFORM_WIN32_KHR)
 endif()
+
+#### sk_app - https://github.com/StereoKit/sk_app ####
+set(SKA_BUILD_EXAMPLES OFF CACHE PATH "Faster build" FORCE)
+if (NOT SK_LOCAL_SK_APP)
+  CPMAddPackage(
+    NAME sk_app
+    GITHUB_REPOSITORY StereoKit/sk_app
+    GIT_TAG v2026.3.11
+  )
+else()
+  # For building directly with in-progress sk_app changes, point this to your
+  # local sk_app clone, and use it instead of CPM.
+  add_subdirectory(../sk_app ../sk_app/build)
+endif()
+set_target_properties(sk_app PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
 ###########################################
@@ -424,13 +461,12 @@ set(SK_SRC_PLATFORMS
   StereoKitC/platforms/android.h
   StereoKitC/platforms/linux.h
   StereoKitC/platforms/linux.cpp
+  StereoKitC/platforms/macos.h
+  StereoKitC/platforms/macos.cpp
   StereoKitC/platforms/platform.h
   StereoKitC/platforms/_platform.h
   StereoKitC/platforms/platform.cpp
   StereoKitC/platforms/platform_common_win.cpp
-  StereoKitC/platforms/platform_common_unix.cpp
-  StereoKitC/platforms/web.h
-  StereoKitC/platforms/web.cpp
   StereoKitC/platforms/win32.h
   StereoKitC/platforms/win32.cpp )
 
@@ -600,20 +636,25 @@ if (NOT MSVC)
   # DirectXMath on non-msvc compilers needs a few extra files
   set(LINUX_INCLUDES
     StereoKitC/lib/include_no_win/)
-  set(SK_BIN_DEBUG_EXT ".so.dbg")
 
-  if (NOT EMSCRIPTEN AND SK_BUILD_SHARED_LIBS)
-    set(SK_SEPARATE_DBG ON)
-    add_custom_command(TARGET StereoKitC POST_BUILD
-      COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:StereoKitC> $<TARGET_FILE_DIR:StereoKitC>/$<TARGET_FILE_PREFIX:StereoKitC>$<TARGET_FILE_BASE_NAME:StereoKitC>${SK_BIN_DEBUG_EXT}
-      COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:StereoKitC>
-      COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=$<TARGET_FILE_DIR:StereoKitC>/$<TARGET_FILE_PREFIX:StereoKitC>$<TARGET_FILE_BASE_NAME:StereoKitC>${SK_BIN_DEBUG_EXT} $<TARGET_FILE:StereoKitC>
-    )
-  endif()
-  if (SK_DYNAMIC_OPENXR)
-    add_custom_command(TARGET StereoKitC POST_BUILD
-      COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:openxr_loader>
-    )
+  if (APPLE)
+    # macOS uses dSYM for debug symbols, but we don't separate them currently
+  else()
+    set(SK_BIN_DEBUG_EXT ".so.dbg")
+
+    if (NOT EMSCRIPTEN AND SK_BUILD_SHARED_LIBS AND SK_STRIP_DEBUG_SYMBOLS)
+      set(SK_SEPARATE_DBG ON)
+      add_custom_command(TARGET StereoKitC POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:StereoKitC> $<TARGET_FILE_DIR:StereoKitC>/$<TARGET_FILE_PREFIX:StereoKitC>$<TARGET_FILE_BASE_NAME:StereoKitC>${SK_BIN_DEBUG_EXT}
+        COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:StereoKitC>
+        COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=$<TARGET_FILE_DIR:StereoKitC>/$<TARGET_FILE_PREFIX:StereoKitC>$<TARGET_FILE_BASE_NAME:StereoKitC>${SK_BIN_DEBUG_EXT} $<TARGET_FILE:StereoKitC>
+      )
+    endif()
+    if (SK_DYNAMIC_OPENXR AND SK_STRIP_DEBUG_SYMBOLS)
+      add_custom_command(TARGET StereoKitC POST_BUILD
+        COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:openxr_loader>
+      )
+    endif()
   endif()
 else()
   set(SK_BIN_DEBUG_EXT ".pdb")
@@ -635,11 +676,13 @@ target_link_libraries( StereoKitC
   PRIVATE
     ${PHYSICS_LIB}
     ${LINUX_LIBS}
+    ${MACOS_LIBS}
     ${WINDOWS_LIBS}
     ${CMAKE_DL_LIBS}
     meshoptimizer
     basisu_transcoder
   PUBLIC
+    sk_app
     sk_renderer
     ${OPENXR_LIB}
     ${ANDROID_LIBS}
@@ -654,6 +697,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   if (MINGW)
     set(SK_RELEASE_COMPILE -g -O3 -fdata-sections -ffunction-sections )
     set(SK_RELEASE_LINK    -Wl,--gc-sections -Wl,--build-id)
+    set(SK_WARNING_FLAG    -w)
+  elseif(APPLE)
+    set(SK_RELEASE_COMPILE -g -O3 -fdata-sections -ffunction-sections -flto)
+    set(SK_RELEASE_LINK    -Wl,-dead_strip -flto)
     set(SK_WARNING_FLAG    -w)
   else()
     set(SK_RELEASE_COMPILE -g -O3 -fdata-sections -ffunction-sections -flto)
@@ -694,6 +741,8 @@ if (WIN32)
   set(SK_BIN_OS "Win32")
 elseif(ANDROID)
   set(SK_BIN_OS "Android")
+elseif(APPLE)
+  set(SK_BIN_OS "macOS")
 elseif(UNIX)
   set(SK_BIN_OS "Linux")
 elseif(EMSCRIPTEN)
@@ -712,6 +761,18 @@ elseif(WIN32)
     set(SK_ARCH "x64")
   else()
     set(SK_ARCH "x86")
+  endif()
+elseif(APPLE)
+  # CMAKE_OSX_ARCHITECTURES is set by presets, falls back to CMAKE_SYSTEM_PROCESSOR
+  set(SK_ARCH_CHECK "${CMAKE_OSX_ARCHITECTURES}")
+  if(NOT SK_ARCH_CHECK)
+    set(SK_ARCH_CHECK "${CMAKE_SYSTEM_PROCESSOR}")
+  endif()
+  string(TOLOWER "${SK_ARCH_CHECK}" SK_ARCH_CHECK_LOWER)
+  if(SK_ARCH_CHECK_LOWER STREQUAL "arm64")
+    set(SK_ARCH "arm64")
+  else()
+    set(SK_ARCH "x64")
   endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(CMAKE_SYSTEM_PROCESSOR)
@@ -752,6 +813,19 @@ if(SK_DISTRIBUTE)
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}/${SK_ARCH}/$<CONFIG>/standard"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:openxr_loader>" "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}/${SK_ARCH}/$<CONFIG>/standard/$<TARGET_FILE_NAME:openxr_loader>" )
   endif()
+  # Copy sk_app.jar on Android (Java classes for file dialogs, activity results)
+  if (ANDROID AND TARGET sk_app_jar)
+    add_custom_command(TARGET StereoKitC POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${sk_app_BINARY_DIR}/sk_app.jar" "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}/sk_app.jar"
+      COMMENT "Copying sk_app.jar to distribute folder" )
+  endif()
+  # Copy MoltenVK on macOS (required for Vulkan/Metal translation)
+  if (APPLE AND TARGET MoltenVK)
+    add_custom_command(TARGET StereoKitC POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:MoltenVK>" "${CMAKE_CURRENT_SOURCE_DIR}/${SK_DISTRIBUTE_FOLDER}/bin/${SK_BIN_OS}/${SK_ARCH}/$<CONFIG>/$<TARGET_FILE_NAME:MoltenVK>"
+      COMMENT "Copying MoltenVK to distribute folder" )
+  endif()
 endif()
 
 ###########################################
@@ -759,7 +833,12 @@ endif()
 ###########################################
 
 if (SK_BUILD_TESTS)
-  add_executable( StereoKitCTest ${SK_WIN32}
+  add_skapp ( StereoKitCTest
+    PACKAGE_NAME net.stereokit.stereokitctest
+    APP_NAME "StereoKit C Test"
+    MANIFEST Examples/StereoKitCTest/AndroidManifest.xml )
+
+  target_sources( StereoKitCTest PRIVATE
     Examples/StereoKitCTest/main.cpp
     Examples/StereoKitCTest/demo_envmap.h
     Examples/StereoKitCTest/demo_envmap.cpp
@@ -799,9 +878,10 @@ if (SK_BUILD_TESTS)
     Examples/StereoKitCTest/skt_lighting.cpp
   )
 
-  target_link_libraries( StereoKitCTest
-    StereoKitC
-  )
+  target_link_libraries( StereoKitCTest PRIVATE StereoKitC )
+  if (SK_DYNAMIC_OPENXR)
+    target_link_libraries( StereoKitCTest PRIVATE openxr_loader )
+  endif()
 
   # MinGW: Statically link C++ runtime. Both DLL and EXE get their own copy.
   # --allow-multiple-definition: The DLL's import library has runtime symbols too,
@@ -814,8 +894,11 @@ if (SK_BUILD_TESTS)
     target_compile_options(StereoKitCTest PRIVATE "/MP8")
   endif()
 
+  # Ensure we get MoltenVK binaries in the right place on MacOS
+  skr_copy_moltenvk(StereoKitCTest)
+
   skshaderc_compile_headers( StereoKitCTest
-    ${CMAKE_BINARY_DIR}/test_shaders/
+    ${CMAKE_BINARY_DIR}/shaders/
     "-e -O3 -f ${SK_SHADER_VERBOSITY} -i ${CMAKE_CURRENT_SOURCE_DIR}/tools/include"
     Examples/StereoKitCTest/Shaders/blit.hlsl
     Examples/StereoKitCTest/Shaders/skt_default_lighting.hlsl
@@ -823,14 +906,11 @@ if (SK_BUILD_TESTS)
     Examples/StereoKitCTest/Shaders/skt_shadow.hlsl
     Examples/StereoKitCTest/Shaders/skt_shadow_caster.hlsl)
 
-  #target_link_options   (StereoKitCTest PRIVATE ${SK_LINKER_FLAGS})
+  # Add source assets and compiled shaders to the app
+  target_skapp_assets(StereoKitCTest ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+  target_skapp_assets(StereoKitCTest ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Assets)
 
-  set (source      ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Assets)
-  set (destination $<TARGET_FILE_DIR:StereoKitCTest>/Assets)
-  add_custom_command(
-    TARGET StereoKitCTest
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${source} ${destination}
-    COMMENT "Copy resources from ${source} => ${destination}")
+  #target_link_options   (StereoKitCTest PRIVATE ${SK_LINKER_FLAGS})
 endif()
 
 ###########################################

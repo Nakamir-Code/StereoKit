@@ -2,7 +2,15 @@
 #include "../sk_memory.h"
 
 #include <sk_renderer.h>
+
+// basisu has a lot of deprecated-builtin warnings embedded in its headers
+#pragma warning(push)
+#pragma warning(disable : 4068)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-builtins"
 #include <basisu_transcoder.h>
+#pragma clang diagnostic pop
+#pragma warning(pop)
 
 using namespace basist;
 

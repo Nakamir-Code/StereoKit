@@ -8,18 +8,14 @@ struct vsIn {
 struct psIn {
 	float4 pos  : SV_Position;
 	float3 norm : NORMAL0;
-	uint view_id : SV_RenderTargetArrayIndex;
 };
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	o.view_id = id % sk_view_count;
-	id        = id / sk_view_count;
-
 	o.pos = float4(input.pos.xy, 1, 1);
 
-	float4 proj_inv = mul(o.pos, sk_proj_inv[o.view_id]);
-	o.norm = mul(float4(proj_inv.xyz, 0), transpose(sk_view[o.view_id])).xyz;
+	float4 proj_inv = mul(o.pos, sk_proj_inv[ids.view]);
+	o.norm = mul(float4(proj_inv.xyz, 0), transpose(sk_view[ids.view])).xyz;
 	return o;
 }
 

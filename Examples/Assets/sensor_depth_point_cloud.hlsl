@@ -39,7 +39,6 @@ struct psIn {
 	float4 pos     : SV_POSITION;
 	float2 uv      : TEXCOORD0;
 	float4 color   : COLOR0;
-	uint   view_id : SV_RenderTargetArrayIndex;
 };
 
 float decode_depth(float z, float nearZ, float farZ, float scale, float invalidValue)
@@ -54,10 +53,8 @@ float decode_depth(float z, float nearZ, float farZ, float scale, float invalidV
 	return d * scale;
 }
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	o.view_id = id % sk_view_count;
-	id        = id / sk_view_count;
 
 	float2 sample_uv = input.sample_uv.xy;
 	float3 tex_coord = float3(sample_uv.x, 1.0 - sample_uv.y, eye_layer);
@@ -80,13 +77,13 @@ psIn vs(vsIn input, uint id : SV_InstanceID) {
 	float4 world   = mul(eye_pose, float4(eye_pos, 1));
 
 	// Apply point size in view-space (meters) or clip-space (pixels)
-	float4 view = mul(world, sk_view[o.view_id]);
+	float4 view = mul(world, sk_view[ids.view]);
 	if (screen_size <= 0.1)
 		view.xy = point_size * input.off + view.xy;
-	o.pos = mul(view, sk_proj[o.view_id]);
+	o.pos = mul(view, sk_proj[ids.view]);
 
 	if (screen_size > 0.1) {
-		float aspect = sk_proj[o.view_id]._m11 / sk_proj[o.view_id]._m00;
+		float aspect = sk_proj[ids.view]._m11 / sk_proj[ids.view]._m00;
 		o.pos.xy = (point_size * input.off / float2(aspect, 1)) * o.pos.w + o.pos.xy;
 	}
 

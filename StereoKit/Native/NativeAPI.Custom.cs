@@ -35,7 +35,13 @@ namespace StereoKit
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 				NativeLibrary.TryLoad(Path.Combine(basePath, "runtimes", $"linux-{arch}", "native", "libStereoKitC.so"), out handle);
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-				NativeLibrary.TryLoad(Path.Combine(basePath, "runtimes", $"osx-{arch}", "native", "libStereoKitC.dylib"), out handle);
+			{
+				// Pre-load MoltenVK so native dlopen("libMoltenVK.dylib")
+				// from volk/sk_app can find it already in the process.
+				string osxNative = Path.Combine(basePath, "runtimes", $"osx-{arch}", "native");
+				NativeLibrary.TryLoad(Path.Combine(osxNative, "libMoltenVK.dylib"), out _);
+				NativeLibrary.TryLoad(Path.Combine(osxNative, "libStereoKitC.dylib"), out handle);
+			}
 
 			return handle;
 		}

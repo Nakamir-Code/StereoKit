@@ -43,23 +43,19 @@ struct psIn {
 	half3  irradiance: COLOR1;
 	float3 world     : TEXCOORD1;
 	float3 view_dir  : TEXCOORD2;
-	uint view_id : SV_RenderTargetArrayIndex;
 };
 
-psIn vs(vsIn input, uint id : SV_InstanceID) {
+psIn vs(vsIn input, sk_ids_t ids) {
 	psIn o;
-	o.view_id = id % sk_view_count;
-	id        = id / sk_view_count;
-
-	float3x3 world3x3 = (float3x3)sk_inst[id].world;
-	o.world = mul(input.pos.xyz, world3x3) + sk_inst[id].world[3].xyz;
-	o.pos   = mul(float4(o.world, 1), sk_viewproj[o.view_id]);
+	float3x3 world3x3 = (float3x3)sk_inst[ids.inst].world;
+	o.world = mul(input.pos.xyz, world3x3) + sk_inst[ids.inst].world[3].xyz;
+	o.pos   = mul(float4(o.world, 1), sk_viewproj[ids.view]);
 
 	o.normal     = normalize(mul(input.norm, world3x3));
 	o.uv         = (input.uv * tex_trans.zw) + tex_trans.xy;
-	o.color      = input.color * sk_inst[id].color * color;
+	o.color      = input.color * sk_inst[ids.inst].color * color;
 	o.irradiance = sk_lighting(o.normal);
-	o.view_dir   = sk_camera_pos[o.view_id].xyz - o.world;
+	o.view_dir   = sk_camera_pos[ids.view].xyz - o.world;
 	return o;
 }
 

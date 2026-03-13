@@ -756,15 +756,15 @@ anim_t gltf_parseanim(const cgltf_animation *anim, hashmap_t<cgltf_node*, model_
 		case cgltf_interpolation_type_linear:       curve.interpolation = anim_interpolation_linear; break;
 		case cgltf_interpolation_type_step:         curve.interpolation = anim_interpolation_step;   break;
 		case cgltf_interpolation_type_cubic_spline: curve.interpolation = anim_interpolation_cubic;  break;
+		case cgltf_interpolation_type_max_enum: break;
 		}
 		switch (ch->target_path) {
 		case cgltf_animation_path_type_translation: curve.applies_to = anim_element_translation; break;
 		case cgltf_animation_path_type_rotation:    curve.applies_to = anim_element_rotation;    break;
 		case cgltf_animation_path_type_scale:       curve.applies_to = anim_element_scale;       break;
 		case cgltf_animation_path_type_weights:     curve.applies_to = anim_element_weights;     break;
-		case cgltf_animation_path_type_invalid: {
-			log_errf("Got invalid animation path type");
-		} break;
+		case cgltf_animation_path_type_invalid:
+		case cgltf_animation_path_type_max_enum: break;
 		}
 
 		size_t output_size    =          cgltf_accessor_unpack_floats(ch->sampler->output, nullptr, 0);
