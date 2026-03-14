@@ -586,6 +586,10 @@ void render_set_multisample(int32_t display_tex_multisample) {
 	else if (display_tex_multisample <= 3)  val = 2;
 	else if (display_tex_multisample <= 7)  val = 4;
 	else                                    val = 8;
+
+	int32_t max_msaa = skr_get_max_msaa_samples();
+	if (val > max_msaa) val = max_msaa;
+
 	sk_get_settings_ref_mut()->render_multisample = val;
 }
 
