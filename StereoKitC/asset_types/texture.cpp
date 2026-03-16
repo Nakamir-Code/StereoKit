@@ -65,6 +65,14 @@ tex_t _tex_get_error_fallback(tex_t texture) {
 }
 
 ///////////////////////////////////////////
+
+bool tex_format_is_mippable(tex_format_ format) {
+	// Block-compressed formats can't be rendered into, so runtime mip
+	// generation is not possible for them.
+	return format < tex_format_bc1_rgb_srgb || format > tex_format_atc_rgba;
+}
+
+///////////////////////////////////////////
 // Helper functions for sk_renderer API  //
 ///////////////////////////////////////////
 
@@ -1475,6 +1483,12 @@ void tex_set_meta(tex_t texture, int32_t width, int32_t height, tex_format_ form
 	texture->width  = width;
 	texture->height = height;
 	texture->format = format;
+
+	// Compressed formats can't be rendered into, so mip generation is not
+	// possible. Strip the mips flag if the format turns out to be compressed.
+	if ((texture->type & tex_type_mips) && !tex_format_is_mippable(format)) {
+		texture->type = (tex_type_)(texture->type & ~tex_type_mips);
+	}
 
 	if (texture->fallback == nullptr) {
 		texture->meta_hash = tex_meta_hash(texture);
