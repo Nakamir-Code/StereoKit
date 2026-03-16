@@ -119,7 +119,7 @@ bool ktx2_decode(void* data, size_t data_size, tex_type_ *ref_image_type, tex_fo
 	ktx2_header header = ktx_transcoder.get_header();
 	*out_width       = ktx_transcoder.get_width ();
 	*out_height      = ktx_transcoder.get_height();
-	*out_mip_count   = ktx_transcoder.get_levels();
+	*out_mip_count   = ktx_transcoder.get_levels() == 0 ? 1 : ktx_transcoder.get_levels();
 	*out_array_count = ktx_transcoder.get_layers() == 0 ? 1 : ktx_transcoder.get_layers();
 	if (ktx_transcoder.get_faces() > 1) { // If it's a cubemap, it'll have a value of 6 here, otherwise it'll be 1.
 		*out_array_count = ktx_transcoder.get_faces();
