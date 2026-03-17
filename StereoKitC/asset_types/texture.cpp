@@ -37,6 +37,7 @@ bool   tex_load_image_info(void* data, size_t data_size, bool32_t srgb_data, tex
 void   tex_update_label   (tex_t texture);
 size_t tex_format_pitch   (tex_format_ format, int32_t width);
 void  _tex_set_options    (skr_tex_t* texture, tex_sample_ sample, tex_address_ address_mode, tex_sample_comp_ compare, int32_t anisotropy_level);
+void   tex_compute_sh     (tex_t texture, bool end_cmd);
 
 const char *tex_msg_load_failed           = "Texture file failed to load: %s";
 const char *tex_msg_invalid_fmt           = "Texture invalid format: %s";
@@ -771,35 +772,10 @@ tex_t tex_create_cubemap_file(const char *cubemap_file, bool32_t srgb_data, int3
 		skr_tex_destroy(&equirect);
 		shader_release(convert_shader);
 
-		// Compute spherical harmonics on GPU using a small mip level
-		skr_vec3i_t base_size = { tex->width, tex->height, 1 };
-		int32_t     mip_count = skr_tex_calc_mip_count(base_size);
-		int32_t     mip_level = maxi(0, mip_count - 6);
-		skr_vec3i_t mip_size  = skr_tex_calc_mip_dimensions(base_size, mip_level);
-
-		skr_buffer_t sh_buffer = {};
-		skr_buffer_create(nullptr, 1, sizeof(spherical_harmonics_t), skr_buffer_type_storage, (skr_use_)(skr_use_dynamic | skr_use_compute_write), &sh_buffer);
-
-		skr_compute_t sh_compute = {};
-		skr_compute_create(&sk_default_shader_sh_compute->gpu_shader, &sh_compute);
-
-		uint32_t params[4] = { (uint32_t)mip_size.x, (uint32_t)mip_level, 0, 0 };
-		skr_compute_set_params(&sh_compute, params, sizeof(params));
-		skr_compute_set_tex   (&sh_compute, "source", &tex->gpu_tex);
-		skr_compute_set_buffer(&sh_compute, "sh_output", &sh_buffer);
-		skr_compute_execute   (&sh_compute, 1, 1, 1);
-
-		// Wait for GPU work to complete before marking texture as loaded
-		// This ensures layout transitions are visible to other threads
-		skr_future_t future = skr_cmd_end();
-		skr_future_wait(&future);
-
-		// Read back SH coefficients and store in texture
-		tex->light_info = sk_malloc_t(spherical_harmonics_t, 1);
-		skr_buffer_get(&sh_buffer, tex->light_info->coefficients, sizeof(spherical_harmonics_t));
-
-		skr_compute_destroy(&sh_compute);
-		skr_buffer_destroy (&sh_buffer);
+		// Compute spherical harmonics on GPU using the cubemap we just
+		// created. skr_cmd_begin was already called above, end_cmd=true
+		// closes the command scope and submits everything together.
+		tex_compute_sh(tex, true);
 
 		tex_set_fallback(tex, nullptr);
 		tex->header.state = asset_state_loaded;
@@ -1047,6 +1023,45 @@ void tex_on_load_remove(tex_t texture, void (*on_load)(tex_t texture, void *cont
 
 ///////////////////////////////////////////
 
+// Dispatches the SH compute shader and waits for results. If end_cmd
+// is true, the active command buffer is ended via skr_cmd_end (use when
+// the caller owns the command scope). Otherwise skr_cmd_flush is used,
+// which is safe inside a nested command scope but leaves the scope open.
+void tex_compute_sh(tex_t texture, bool end_cmd) {
+	profiler_zone();
+
+	skr_vec3i_t base_size = { texture->width, texture->height, 1 };
+	int32_t     mip_count = skr_tex_calc_mip_count(base_size);
+	int32_t     mip_level = maxi(0, mip_count - 6);
+	skr_vec3i_t mip_size  = skr_tex_calc_mip_dimensions(base_size, mip_level);
+
+	skr_buffer_t sh_buffer = {};
+	skr_buffer_create(nullptr, 1, sizeof(spherical_harmonics_t), skr_buffer_type_storage, (skr_use_)(skr_use_dynamic | skr_use_compute_write), &sh_buffer);
+
+	skr_compute_t sh_compute = {};
+	skr_compute_create(&sk_default_shader_sh_compute->gpu_shader, &sh_compute);
+
+	uint32_t params[4] = { (uint32_t)mip_size.x, (uint32_t)mip_level, 0, 0 };
+	skr_compute_set_params(&sh_compute, params, sizeof(params));
+	skr_compute_set_tex   (&sh_compute, "source", &texture->gpu_tex);
+	skr_compute_set_buffer(&sh_compute, "sh_output", &sh_buffer);
+	skr_compute_execute   (&sh_compute, 1, 1, 1);
+
+	skr_future_t future = end_cmd
+		? skr_cmd_end()
+		: skr_cmd_flush();
+	skr_future_wait(&future);
+
+	sk_free(texture->light_info);
+	texture->light_info = sk_malloc_t(spherical_harmonics_t, 1);
+	skr_buffer_get(&sh_buffer, texture->light_info->coefficients, sizeof(spherical_harmonics_t));
+
+	skr_compute_destroy(&sh_compute);
+	skr_buffer_destroy (&sh_buffer);
+}
+
+///////////////////////////////////////////
+
 // TODO: would be nice to maybe merge these into one function, simplify the memory layout
 void _tex_set_color_arr(tex_t texture, int32_t width, int32_t height, void **array_data, int32_t array_count, int32_t mip_count, spherical_harmonics_t *sh_lighting_info, int32_t multisample) {
 	profiler_zone();
@@ -1165,6 +1180,14 @@ void _tex_set_color_arr(tex_t texture, int32_t width, int32_t height, void **arr
 	sk_free(flat_data);
 
 	if (skr_tex_is_valid(&texture->gpu_tex)) {
+		if ((texture->type & tex_type_cubemap) && texture->light_info == nullptr) {
+			bool was_active = skr_cmd_is_active();
+			skr_cmd_begin();
+			tex_compute_sh(texture, !was_active);
+			if (was_active)
+				skr_cmd_end();
+		}
+
 		if (sh_lighting_info != nullptr)
 			*sh_lighting_info = tex_get_cubemap_lighting(texture);
 
@@ -1726,12 +1749,6 @@ tex_t tex_gen_cubemap(const gradient_t gradient_bot_to_top, vec3 gradient_dir, i
 		}
 	}
 
-	tex_set_color_arr(result, size, size, (void**)data, 6);
-
-	for (int32_t i = 0; i < 6; i++) {
-		sk_free(data[i]);
-	}
-
 	// Compute SH by sampling the gradient at uniformly distributed directions
 	// on a sphere using a Fibonacci spiral.
 	spherical_harmonics_t sh = {};
@@ -1759,12 +1776,19 @@ tex_t tex_gen_cubemap(const gradient_t gradient_bot_to_top, vec3 gradient_dir, i
 
 	sh_windowing(sh, 0.01f);
 
-	// Store in texture for later retrieval
+	// Set light_info before uploading so _tex_set_color_arr skips the
+	// redundant SH compute — this cubemap was generated from a gradient.
 	result->light_info  = sk_malloc_t(spherical_harmonics_t, 1);
 	*result->light_info = sh;
 
 	if (out_sh_lighting_info != nullptr)
 		*out_sh_lighting_info = sh;
+
+	tex_set_color_arr(result, size, size, (void**)data, 6);
+
+	for (int32_t i = 0; i < 6; i++) {
+		sk_free(data[i]);
+	}
 
 	return result;
 }
@@ -1837,6 +1861,11 @@ tex_t tex_gen_cubemap_sh(const spherical_harmonics_t& lookup, int32_t face_size,
 			}
 		}
 	}
+
+	// Set light_info before uploading so _tex_set_color_arr skips the
+	// redundant SH compute — this cubemap was generated from SH data.
+	result->light_info  = sk_malloc_t(spherical_harmonics_t, 1);
+	*result->light_info = lookup;
 
 	tex_set_color_arr(result, size, size, (void**)data, 6);
 
