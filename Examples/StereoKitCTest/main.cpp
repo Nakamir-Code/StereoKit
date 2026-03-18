@@ -10,7 +10,7 @@ using namespace sk;
 #include "demo_sprites.h"
 #include "demo_lines.h"
 #include "demo_picker.h"
-#include "demo_world.h"
+#include "demo_mixed_reality.h"
 #include "demo_anchors.h"
 #include "demo_lighting.h"
 #include "demo_draw.h"
@@ -62,11 +62,6 @@ scene_t demos[] = {
 		demo_picker_update,
 		demo_picker_shutdown,
 	}, {
-		"World",
-		demo_world_init,
-		demo_world_update,
-		demo_world_shutdown,
-	}, {
 		"Anchors",
 		demo_anchors_init,
 		demo_anchors_update,
@@ -82,11 +77,6 @@ scene_t demos[] = {
 		demo_draw_update,
 		demo_draw_shutdown,
 	}, {
-		"Environment Map",
-		demo_envmap_init,
-		demo_envmap_update,
-		demo_envmap_shutdown,
-	}, {
 		"Shadows",
 		demo_shadows_init,
 		demo_shadows_update,
@@ -101,6 +91,16 @@ scene_t demos[] = {
 		demo_aliasing_init,
 		demo_aliasing_update,
 		demo_aliasing_shutdown,
+	}, {
+		"Environment Map",
+		demo_envmap_init,
+		demo_envmap_update,
+		demo_envmap_shutdown,
+	}, {
+		"Mixed Reality",
+		demo_mixed_reality_init,
+		demo_mixed_reality_update,
+		demo_mixed_reality_shutdown,
 	},
 #if defined(_WIN32)
 	{
