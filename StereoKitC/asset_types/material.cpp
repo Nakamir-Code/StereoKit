@@ -25,6 +25,7 @@ skr_material_info_t material_build_info(material_t material) {
 	info.depth_test  = material->gpu_mat.key.depth_test;
 	info.write_mask  = material->gpu_mat.key.write_mask;
 	info.depth_clamp = material->gpu_mat.key.depth_clamp;
+	info.wireframe   = material->gpu_mat.key.wireframe;
 
 	// alpha_mode is cached since it's a higher-level abstraction
 	switch (material->alpha_mode) {
@@ -406,10 +407,9 @@ void material_set_cull(material_t material, cull_ mode) {
 ///////////////////////////////////////////
 
 void material_set_wireframe(material_t material, bool32_t wireframe) {
-	// sk_renderer doesn't support wireframe, so we just ignore this
-	// Keep the API for compatibility but don't store the value
-	(void)material;
-	(void)wireframe;
+	if (material->gpu_mat.key.wireframe == (bool)wireframe) return;
+	material->gpu_mat.key.wireframe = wireframe;
+	material_recreate_gpu(material);
 }
 
 ///////////////////////////////////////////
@@ -509,9 +509,7 @@ cull_ material_get_cull(material_t material) {
 ///////////////////////////////////////////
 
 bool32_t material_get_wireframe(material_t material) {
-	// sk_renderer doesn't support wireframe
-	(void)material;
-	return false;
+	return material->gpu_mat.key.wireframe;
 }
 
 ///////////////////////////////////////////
