@@ -24,6 +24,9 @@ namespace sk {
 ///////////////////////////////////////////
 
 static material_t depth_prepass_mat      = {};
+static mesh_t     depth_grid_mesh        = {};
+static uint32_t   depth_grid_w           = 0;
+static uint32_t   depth_grid_h           = 0;
 static bool       depth_started_by_world = false;
 static bool       depth_enabled          = false;
 
@@ -63,11 +66,53 @@ static matrix depth_build_vp(const sensor_depth_view_t *eye, float near_z, float
 	return view_mat * proj;
 }
 
+static void depth_ensure_grid(uint32_t w, uint32_t h) {
+	if (w == depth_grid_w && h == depth_grid_h && depth_grid_mesh != nullptr)
+		return;
+
+	if (depth_grid_mesh != nullptr)
+		mesh_release(depth_grid_mesh);
+
+	depth_grid_w = w;
+	depth_grid_h = h;
+
+	// Index-only mesh — shader derives position from SV_VertexID.
+	depth_grid_mesh = mesh_create();
+	mesh_set_id       (depth_grid_mesh, "default/mesh_depth_grid");
+	mesh_set_keep_data(depth_grid_mesh, false);
+
+	int32_t  ind_count = (int32_t)(6 * (w - 1) * (h - 1));
+	vind_t  *inds      = sk_malloc_t(vind_t, ind_count);
+
+	// Build triangle grid — vertex IDs map to texel grid positions.
+	// Alternate diagonal direction per quad for more uniform artifacts.
+	int32_t idx = 0;
+	for (uint32_t y = 0; y < h - 1; y++) {
+		for (uint32_t x = 0; x < w - 1; x++) {
+			vind_t v00 = (vind_t)(y       * w + x);
+			vind_t v10 = (vind_t)(y       * w + x + 1);
+			vind_t v01 = (vind_t)((y + 1) * w + x);
+			vind_t v11 = (vind_t)((y + 1) * w + x + 1);
+			if ((x + y) % 2 == 0) {
+				inds[idx++] = v00; inds[idx++] = v10; inds[idx++] = v01;
+				inds[idx++] = v10; inds[idx++] = v11; inds[idx++] = v01;
+			} else {
+				inds[idx++] = v00; inds[idx++] = v10; inds[idx++] = v11;
+				inds[idx++] = v00; inds[idx++] = v11; inds[idx++] = v01;
+			}
+		}
+	}
+
+	mesh_set_inds(depth_grid_mesh, inds, ind_count);
+	sk_free(inds);
+}
+
 static void depth_init() {
 	depth_prepass_mat = material_create(sk_default_shader_depth_prepass);
 	material_set_id          (depth_prepass_mat, "default/material_depth_prepass");
 	material_set_depth_test  (depth_prepass_mat, depth_test_always);
 	material_set_depth_write (depth_prepass_mat, true);
+	material_set_cull        (depth_prepass_mat, cull_none);
 	material_set_queue_offset(depth_prepass_mat, -200);
 }
 
@@ -79,6 +124,10 @@ static void depth_shutdown() {
 	depth_enabled = false;
 	material_release(depth_prepass_mat);
 	depth_prepass_mat = {};
+	mesh_release(depth_grid_mesh);
+	depth_grid_mesh = {};
+	depth_grid_w    = 0;
+	depth_grid_h    = 0;
 }
 
 static void depth_step() {
@@ -93,17 +142,21 @@ static void depth_step() {
 	if (depth_tex == nullptr)
 		return;
 
-	material_set_texture(depth_prepass_mat, "depth_tex",  depth_tex);
+	depth_ensure_grid(frame.width, frame.height);
+	if (depth_grid_mesh == nullptr)
+		return;
+
+	material_set_texture(depth_prepass_mat, "depth_tex", depth_tex);
+	material_set_vector4(depth_prepass_mat, "depth_dims", {
+		(float)frame.width, (float)frame.height,
+		1.0f / (float)frame.width, 1.0f / (float)frame.height });
 
 	matrix depth_vp_l = depth_build_vp(&frame.views[0], frame.near_z, frame.far_z);
 	matrix depth_vp_r = depth_build_vp(&frame.views[1], frame.near_z, frame.far_z);
-	material_set_matrix(depth_prepass_mat, "depth_view_proj_l",     depth_vp_l);
-	material_set_matrix(depth_prepass_mat, "depth_view_proj_r",     depth_vp_r);
 	material_set_matrix(depth_prepass_mat, "depth_view_proj_inv_l", matrix_invert(depth_vp_l));
 	material_set_matrix(depth_prepass_mat, "depth_view_proj_inv_r", matrix_invert(depth_vp_r));
 
-	// Submit the fullscreen quad with the depth pre-pass material
-	render_add_mesh(sk_default_screen_quad, depth_prepass_mat, matrix_identity, {1,1,1,1}, render_layer_0);
+	render_add_mesh(depth_grid_mesh, depth_prepass_mat, matrix_identity, {1,1,1,1}, render_layer_0);
 }
 
 static void depth_set_occlusion(occlusion_caps_ flags, occlusion_caps_ old_flags) {

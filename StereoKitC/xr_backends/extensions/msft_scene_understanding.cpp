@@ -206,7 +206,19 @@ void xr_ext_msft_su_step_begin(void*) {
 	}
 
 	if (local.scene_next_req.occlusion) {
+		#if defined(_MSC_VER)
+		#pragma warning(push)
+		#pragma warning(disable: 4996)
+		#elif defined(__GNUC__) || defined(__clang__)
+		#pragma GCC diagnostic push
+		#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+		#endif
 		material_t mat = world_get_occlusion_material();
+		#if defined(_MSC_VER)
+		#pragma warning(pop)
+		#elif defined(__GNUC__) || defined(__clang__)
+		#pragma GCC diagnostic pop
+		#endif
 		if (mat) {
 			matrix root = render_get_cam_final();
 			for (int32_t i = 0; i < local.scene_visuals.count; i++) {

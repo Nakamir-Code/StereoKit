@@ -89,7 +89,7 @@ void demo_shadows_init() {
 	material_release(floor_mat);
 
 	// Set up initial pose
-	shadow_model_pose.position    = vec3{0, -0.4f, -0.5f};
+	shadow_model_pose.position    = vec3{0, -0.5f, -0.5f};
 	shadow_model_pose.orientation = quat_identity;
 
 	// Save old lighting
