@@ -408,6 +408,54 @@ namespace StereoKit
 
 		///////////////////////////////////////////
 
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       compute_buffer_create(ComputeBufferType type, int element_count, int element_size, IntPtr opt_initial_data);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_buffer_set_id(IntPtr buffer, [MarshalAs(UnmanagedType.LPUTF8Str)] string id);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       compute_buffer_get_id(IntPtr buffer);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_buffer_set_data(IntPtr buffer, IntPtr data, int element_count);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_buffer_get_data(IntPtr buffer, IntPtr out_data, int element_count);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          compute_buffer_get_count(IntPtr buffer);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          compute_buffer_get_stride(IntPtr buffer);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_buffer_addref(IntPtr buffer);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_buffer_release(IntPtr buffer);
+
+		///////////////////////////////////////////
+
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       compute_create(IntPtr shader);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       compute_find([MarshalAs(UnmanagedType.LPUTF8Str)] string id);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_id(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string id);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       compute_get_id(IntPtr compute);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       compute_get_shader(IntPtr compute);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_float(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, float value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_int(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_uint(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, uint value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_vector2(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, Vec2 value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_vector3(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, Vec3 value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_vector4(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, Vec4 value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_color(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, Color color_gamma);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_bool(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, [MarshalAs(UnmanagedType.Bool)] bool value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_set_matrix(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, Matrix value);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern float        compute_get_float(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          compute_get_int(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern uint         compute_get_uint(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern Vec2         compute_get_vector2(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern Vec3         compute_get_vector3(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern Vec4         compute_get_vector4(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         compute_get_bool(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern Color        compute_get_color(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern Matrix       compute_get_matrix(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         compute_set_texture(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, IntPtr texture);
+		[return: MarshalAs(UnmanagedType.Bool)]
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         compute_set_buffer(IntPtr compute, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, IntPtr buffer);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_dispatch(IntPtr compute, uint group_count_x, uint group_count_y, uint group_count_z);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          compute_get_param_count(IntPtr compute);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_get_param_info(IntPtr compute, int index, out IntPtr out_name, out MaterialParam out_type);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_addref(IntPtr compute);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         compute_release(IntPtr compute);
+
+		///////////////////////////////////////////
+
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern TextStyle    text_make_style(IntPtr font, float layout_height, Color color_gamma);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern TextStyle    text_make_style_shader(IntPtr font, float layout_height, IntPtr shader, Color color_gamma);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern TextStyle    text_make_style_mat(IntPtr font, float layout_height, IntPtr material, Color color_gamma);

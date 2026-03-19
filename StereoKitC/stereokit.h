@@ -1082,6 +1082,8 @@ SK_DeclarePrivateType(sprite_t);
 SK_DeclarePrivateType(sound_t);
 SK_DeclarePrivateType(anchor_t);
 SK_DeclarePrivateType(render_list_t);
+SK_DeclarePrivateType(compute_t);
+SK_DeclarePrivateType(compute_buffer_t);
 
 ///////////////////////////////////////////
 
@@ -1233,6 +1235,10 @@ typedef enum tex_type_ {
 	  readable. This makes it great for shadowmaps or other textures that need to
 	  be read from later on.*/
 	tex_type_depthtarget   = 1 << 6,
+	/*This texture can be used as a RWTexture in compute shaders.
+	  Create it with a format that supports storage images, such as
+	  tex_format_rgba128.*/
+	tex_type_compute       = 1 << 7,
 	/*A standard color image that also generates mip-maps
 	  automatically.*/
 	tex_type_image         = tex_type_image_nomips | tex_type_mips,
@@ -1386,6 +1392,19 @@ SK_API void         shader_release          (shader_t shader);
 
 ///////////////////////////////////////////
 
+/*Describes the access mode of a ComputeBuffer for use in compute
+  shaders.*/
+typedef enum compute_buffer_type_ {
+	/*Read-only from compute shaders. Maps to StructuredBuffer<T>
+	  in HLSL.*/
+	compute_buffer_type_read      = 1,
+	/*Read-write from compute shaders. Maps to
+	  RWStructuredBuffer<T> in HLSL.*/
+	compute_buffer_type_readwrite = 2,
+} compute_buffer_type_;
+
+///////////////////////////////////////////
+
 /*Also known as 'alpha' for those in the know. But there's
   actually more than one type of transparency in rendering! The
   horrors. We're keepin' it fairly simple for now, so you get three
@@ -1503,6 +1522,9 @@ typedef enum material_param_ {
 	material_param_uint3 = 14,
 	/*A 4 component vector composed of unsigned integers.*/
 	material_param_uint4 = 15,
+	/*A structured buffer resource, such as StructuredBuffer<T> or
+	  RWStructuredBuffer<T> in HLSL.*/
+	material_param_buffer = 16,
 } material_param_;
 
 SK_API material_t        material_find            (const char *id);
@@ -1572,6 +1594,51 @@ SK_API material_buffer_t material_buffer_create   (int32_t size);
 SK_API void              material_buffer_addref   (material_buffer_t buffer);
 SK_API void              material_buffer_release  (material_buffer_t buffer);
 SK_API void              material_buffer_set_data (material_buffer_t buffer, const void *buffer_data);
+
+///////////////////////////////////////////
+
+SK_API compute_buffer_t compute_buffer_create    (compute_buffer_type_ type, int32_t element_count, int32_t element_size, const void *opt_initial_data);
+SK_API void             compute_buffer_set_id    (compute_buffer_t buffer, const char *id);
+SK_API const char*      compute_buffer_get_id    (const compute_buffer_t buffer);
+SK_API void             compute_buffer_set_data  (compute_buffer_t buffer, const void *data, int32_t element_count);
+SK_API void             compute_buffer_get_data  (compute_buffer_t buffer, void *out_data, int32_t element_count);
+SK_API int32_t          compute_buffer_get_count (const compute_buffer_t buffer);
+SK_API int32_t          compute_buffer_get_stride(const compute_buffer_t buffer);
+SK_API void             compute_buffer_addref    (compute_buffer_t buffer);
+SK_API void             compute_buffer_release   (compute_buffer_t buffer);
+
+///////////////////////////////////////////
+
+SK_API compute_t        compute_create           (shader_t shader);
+SK_API compute_t        compute_find             (const char *id);
+SK_API void             compute_set_id           (compute_t compute, const char *id);
+SK_API const char*      compute_get_id           (const compute_t compute);
+SK_API shader_t         compute_get_shader       (const compute_t compute);
+SK_API void             compute_set_float        (compute_t compute, const char *name, float value);
+SK_API void             compute_set_int          (compute_t compute, const char *name, int32_t value);
+SK_API void             compute_set_uint         (compute_t compute, const char *name, uint32_t value);
+SK_API void             compute_set_vector2      (compute_t compute, const char *name, vec2 value);
+SK_API void             compute_set_vector3      (compute_t compute, const char *name, vec3 value);
+SK_API void             compute_set_vector4      (compute_t compute, const char *name, vec4 value);
+SK_API void             compute_set_color        (compute_t compute, const char *name, color128 color_gamma);
+SK_API void             compute_set_bool         (compute_t compute, const char *name, bool32_t value);
+SK_API void             compute_set_matrix       (compute_t compute, const char *name, matrix value);
+SK_API float            compute_get_float        (compute_t compute, const char *name);
+SK_API int32_t          compute_get_int          (compute_t compute, const char *name);
+SK_API uint32_t         compute_get_uint         (compute_t compute, const char *name);
+SK_API vec2             compute_get_vector2      (compute_t compute, const char *name);
+SK_API vec3             compute_get_vector3      (compute_t compute, const char *name);
+SK_API vec4             compute_get_vector4      (compute_t compute, const char *name);
+SK_API bool32_t         compute_get_bool         (compute_t compute, const char *name);
+SK_API color128         compute_get_color        (compute_t compute, const char *name);
+SK_API matrix           compute_get_matrix       (compute_t compute, const char *name);
+SK_API bool32_t         compute_set_texture      (compute_t compute, const char *name, tex_t texture);
+SK_API bool32_t         compute_set_buffer       (compute_t compute, const char *name, compute_buffer_t buffer);
+SK_API void             compute_dispatch         (compute_t compute, uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z);
+SK_API int32_t          compute_get_param_count  (compute_t compute);
+SK_API void             compute_get_param_info   (compute_t compute, int32_t index, char **out_name, material_param_ *out_type);
+SK_API void             compute_addref           (compute_t compute);
+SK_API void             compute_release          (compute_t compute);
 
 ///////////////////////////////////////////
 
@@ -3018,6 +3085,10 @@ typedef enum asset_type_ {
 	asset_type_anchor,
 	/*A RenderList*/
 	asset_type_render_list,
+	/*A Compute dispatch object*/
+	asset_type_compute,
+	/*A ComputeBuffer*/
+	asset_type_compute_buffer,
 } asset_type_;
 
 typedef void* asset_t;
