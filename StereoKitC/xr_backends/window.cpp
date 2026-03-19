@@ -21,6 +21,7 @@
 #include "../systems/input_keyboard.h"
 #include "../systems/render.h"
 #include "../systems/render_pipeline.h"
+#include "../ui/interactor_modes.h"
 #include "../libraries/stref.h"
 #include "../libraries/sokol_time.h"
 
@@ -105,6 +106,9 @@ bool window_init() {
 	if (local->skr_surface.size.x > 0 && local->skr_surface.size.y > 0)
 		window_surface_resize(local->surface, local->skr_surface.size.x, local->skr_surface.size.y);
 
+	interactor_modes_set_default(default_interactors_mouse);
+	input_hand_visible(handed_max, false);
+	input_set_finger_glow(false);
 	return true;
 }
 ///////////////////////////////////////////

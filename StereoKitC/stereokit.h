@@ -2250,12 +2250,23 @@ SK_MakeFlag(button_state_);
 
 /*Options for what type of interactors StereoKit provides by default.*/
 typedef enum default_interactors_ {
-	/*StereoKit's default interactors, this provides an aim ray for a mouse,
-	aim rays for controllers, and aim, pinch, and poke interactors for hands.*/
+	/*Use the XR backend's default interactor mode. This is 'all' for XR,
+	'mouse' for simulator and window, and 'none' for offscreen.*/
 	default_interactors_default,
 	/*Don't provide any interactors at all. This means you either don't want
 	interaction, or are providing your own custom interactors.*/
 	default_interactors_none,
+	/*Auto-switch between hands and controllers based on the current input
+	source. This provides aim, pinch, and poke interactors for hands, and
+	aim rays for controllers.*/
+	default_interactors_all,
+	/*Always use the default hand interactors, using simulated hands when
+	articulated hand tracking is not available.*/
+	default_interactors_hands,
+	/*Always use the default controller interactors.*/
+	default_interactors_controllers,
+	/*Always use the default mouse interactor.*/
+	default_interactors_mouse,
 } default_interactors_;
 
 typedef int32_t interactor_t;
@@ -2736,6 +2747,7 @@ SK_API char32_t              input_text_consume              (void);
 SK_API void                  input_text_reset                (void);
 SK_API void                  input_text_inject_char          (char32_t character);
 SK_API void                  input_hand_visible              (handed_ hand, bool32_t visible);
+SK_API bool32_t              input_hand_get_visible          (handed_ hand);
 SK_API void                  input_hand_material             (handed_ hand, material_t material);
 SK_API bool32_t              input_get_finger_glow           (void);
 SK_API void                  input_set_finger_glow           (bool32_t visible);

@@ -173,8 +173,6 @@ void input_hand_init() {
 	sys.update_poses    = []() {};
 	input_hand_system_register(sys);
 
-	hand_finger_glow_visible = true;
-
 	float blend = 1;
 	for (int32_t i = 0; i < hand_sources.count; i++) {
 		if (hand_sources[i].system == hand_system_oxr_controllers) {
@@ -196,7 +194,6 @@ void input_hand_init() {
 
 	// Initialize the hands!
 	for (int32_t i = 0; i < handed_max; i++) {
-		hand_state[i].visible      = true;
 		hand_state[i].pose_prev_id = -1;
 		memcpy(hand_state[i].pose_prev,  input_pose_neutral, sizeof(pose_t) * SK_FINGERS * SK_FINGERJOINTS);
 		memcpy(hand_state[i].pose_blend, input_pose_neutral, sizeof(pose_t) * SK_FINGERS * SK_FINGERJOINTS);
@@ -329,7 +326,9 @@ void input_hand_state_update(handed_ handedness) {
 
 ///////////////////////////////////////////
 
-bool input_hand_get_visible(handed_ hand) {
+bool32_t input_hand_get_visible(handed_ hand) {
+	if (hand == handed_max)
+		return hand_state[handed_left].visible || hand_state[handed_right].visible;
 	return hand_state[hand].visible;
 }
 

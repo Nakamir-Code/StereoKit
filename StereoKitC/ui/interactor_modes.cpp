@@ -52,6 +52,7 @@ struct interact_mode_eyes_t {
 
 struct interactor_modes_state_t {
 	default_interactors_        default_interactors;
+	default_interactors_        backend_default;
 	bool32_t                    draw_interactors;
 	interact_mode_              input_mode;
 	interact_mode_              input_permitted;
@@ -82,7 +83,10 @@ void interact_mode_eyes_step        (interact_mode_eyes_t*        ref_eyes);
 ///////////////////////////////////////////
 
 void interactor_modes_init() {
+	// Preserve backend default mode that gets set by the platform system
+	default_interactors_ backend_default = local.backend_default;
 	local = {};
+	local.backend_default  = backend_default;
 	local.draw_interactors = true;
 }
 
@@ -96,12 +100,22 @@ void interactor_modes_shutdown() {
 ///////////////////////////////////////////
 
 void interactor_modes_update() {
-	// auto-switch between hands and controllers
-	if (local.default_interactors == default_interactors_default) {
+	// Resolve the active interactor mode
+	default_interactors_ active = local.default_interactors == default_interactors_default
+		? local.backend_default
+		: local.default_interactors;
+
+	switch (active) {
+	case default_interactors_default: break;
+	case default_interactors_none:                                                   interact_mode_switch(interact_mode_none);        break;
+	case default_interactors_hands:                                                  interact_mode_switch(interact_mode_hands);       break;
+	case default_interactors_controllers:                                            interact_mode_switch(interact_mode_controllers); break;
+	case default_interactors_mouse:                                                  interact_mode_switch(interact_mode_mouse);       break;
+	case default_interactors_all: {
 		hand_source_ source = input_hand_source(handed_right);
-		if      (source == hand_source_articulated || source == hand_source_overridden)                   interact_mode_switch(interact_mode_hands);
-		else if (source == hand_source_simulated && device_display_get_type() == display_type_flatscreen) interact_mode_switch(interact_mode_mouse);
-		else                                                                                              interact_mode_switch(interact_mode_controllers);
+		if  (source == hand_source_articulated || source == hand_source_overridden)  interact_mode_switch(interact_mode_hands);
+		else                                                                         interact_mode_switch(interact_mode_controllers);
+	} break;
 	}
 
 	if      (local.input_mode == interact_mode_hands      ) interact_mode_hands_step      (&local.hands);
@@ -112,12 +126,15 @@ void interactor_modes_update() {
 
 ///////////////////////////////////////////
 
+void interactor_modes_set_default(default_interactors_ mode) {
+	local.backend_default = mode;
+}
+
+///////////////////////////////////////////
+
 void interaction_set_default_interactors(default_interactors_ default_interactors) {
 	if (local.default_interactors == default_interactors) return;
 	local.default_interactors = default_interactors;
-
-	if (local.default_interactors == default_interactors_none)
-		interact_mode_switch(interact_mode_none);
 }
 
 ///////////////////////////////////////////

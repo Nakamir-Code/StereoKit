@@ -1175,12 +1175,23 @@ namespace StereoKit
 
 	/// <summary>Options for what type of interactors StereoKit provides by default.</summary>
 	public enum DefaultInteractors {
-		/// <summary>StereoKit's default interactors, this provides an aim ray for a mouse,
-		/// aim rays for controllers, and aim, pinch, and poke interactors for hands.</summary>
+		/// <summary>Use the XR backend's default interactor mode. This is 'all' for XR,
+		/// 'mouse' for simulator and window, and 'none' for offscreen.</summary>
 		Default,
 		/// <summary>Don't provide any interactors at all. This means you either don't want
 		/// interaction, or are providing your own custom interactors.</summary>
 		None,
+		/// <summary>Auto-switch between hands and controllers based on the current input
+		/// source. This provides aim, pinch, and poke interactors for hands, and
+		/// aim rays for controllers.</summary>
+		All,
+		/// <summary>Always use the hand interactors, using simulated hands when
+		/// articulated hand tracking is not available.</summary>
+		Hands,
+		/// <summary>Always use the controller interactors.</summary>
+		Controllers,
+		/// <summary>Always use the mouse interactor.</summary>
+		Mouse,
 	}
 
 	/// <summary>What type of device is the source of the pointer? This is a
