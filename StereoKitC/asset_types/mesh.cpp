@@ -43,6 +43,9 @@ bool32_t mesh_get_keep_data(mesh_t mesh) {
 ///////////////////////////////////////////
 
 void _mesh_set_verts(mesh_t mesh, const vert_t *vertices, uint32_t vertex_count, bool32_t calculate_bounds, bool update_original) {
+	// Assign default vertex type when vertex data is first provided
+	mesh->gpu_mesh.vert_type = render_get_default_vert();
+
 	// Keep track of vertex data for use on CPU side
 	if (!mesh->discard_data && update_original) {
 		if (mesh->vert_capacity < vertex_count) {
@@ -482,10 +485,10 @@ void mesh_addref(mesh_t mesh) {
 
 mesh_t mesh_create() {
 	mesh_t result = (_mesh_t*)assets_allocate(asset_type_mesh);
-	// Initialize the gpu_mesh with vertex type and index format
-	// Actual buffer creation happens lazily in mesh_set_verts/mesh_set_inds
-	result->gpu_mesh.vert_type  = render_get_default_vert();
-	result->gpu_mesh.ind_format = skr_index_fmt_u32;
+	// Initialize gpu_mesh with empty vertex type — actual vertex format
+	// is assigned when vertex data is provided via mesh_set_verts.
+	// This allows index-only meshes for vertex-pulling (SV_VertexID).
+	skr_mesh_create(nullptr, skr_index_fmt_u32, nullptr, 0, nullptr, 0, &result->gpu_mesh);
 	return result;
 }
 
