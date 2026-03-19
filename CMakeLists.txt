@@ -276,7 +276,7 @@ if (NOT SK_LOCAL_SK_RENDERER)
   CPMAddPackage(
     NAME sk_renderer
     GITHUB_REPOSITORY StereoKit/sk_renderer
-    GIT_TAG v2026.3.17
+    GIT_TAG v2026.3.18
   )
 else()
   # For building directly with in-progress sk_renderer changes, point this to your
@@ -340,6 +340,10 @@ set(SK_SRC_ASSET_TYPES
   StereoKitC/asset_types/assets.cpp
   StereoKitC/asset_types/animation.h
   StereoKitC/asset_types/animation.cpp
+  StereoKitC/asset_types/compute.h
+  StereoKitC/asset_types/compute.cpp
+  StereoKitC/asset_types/compute_buffer.h
+  StereoKitC/asset_types/compute_buffer.cpp
   StereoKitC/asset_types/font.h
   StereoKitC/asset_types/font.cpp
   StereoKitC/asset_types/material.h

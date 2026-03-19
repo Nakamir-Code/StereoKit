@@ -664,6 +664,10 @@ namespace StereoKit
 		/// readable. This makes it great for shadowmaps or other textures that need to
 		/// be read from later on.</summary>
 		Depthtarget  = 1 << 6,
+		/// <summary>This texture can be used as a RWTexture in compute shaders.
+		/// Create it with a format that supports storage images, such as
+		/// tex_format_rgba128.</summary>
+		Compute      = 1 << 7,
 		/// <summary>A standard color image that also generates mip-maps
 		/// automatically.</summary>
 		Image        = ImageNomips | Mips,
@@ -738,6 +742,17 @@ namespace StereoKit
 		/// this? I'm not sure!! But the graphics card can do it, so now you
 		/// can too!</summary>
 		Mirror,
+	}
+
+	/// <summary>Describes the access mode of a ComputeBuffer for use in compute
+	/// shaders.</summary>
+	public enum ComputeBufferType {
+		/// <summary>Read-only from compute shaders. Maps to StructuredBuffer&lt;T&gt;
+		/// in HLSL.</summary>
+		Read         = 1,
+		/// <summary>Read-write from compute shaders. Maps to
+		/// RWStructuredBuffer&lt;T&gt; in HLSL.</summary>
+		ReadWrite    = 2,
 	}
 
 	/// <summary>Also known as 'alpha' for those in the know. But there's
@@ -856,6 +871,9 @@ namespace StereoKit
 		UInt3        = 14,
 		/// <summary>A 4 component vector composed of unsigned integers.</summary>
 		UInt4        = 15,
+		/// <summary>A structured buffer resource, such as StructuredBuffer&lt;T&gt; or
+		/// RWStructuredBuffer&lt;T&gt; in HLSL.</summary>
+		Buffer       = 16,
 	}
 
 	/// <summary>This enum describes how text layout behaves within the space
@@ -1606,6 +1624,8 @@ namespace StereoKit
 		Android,
 		/// <summary>This is running in a browser.</summary>
 		Web,
+		/// <summary>This is running as a macOS app.</summary>
+		Macos,
 	}
 
 	/// <summary>This describes the graphics API that StereoKit is using for rendering.</summary>
@@ -1670,6 +1690,10 @@ namespace StereoKit
 		Anchor,
 		/// <summary>A RenderList</summary>
 		RenderList,
+		/// <summary>A Compute dispatch object</summary>
+		Compute,
+		/// <summary>A ComputeBuffer</summary>
+		ComputeBuffer,
 	}
 
 	/// <summary>This describes how a UI element moves when being dragged around by a user!</summary>

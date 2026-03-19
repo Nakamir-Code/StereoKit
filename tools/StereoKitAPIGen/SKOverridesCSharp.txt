@@ -42,6 +42,8 @@ render_layer_7 Layer7
 render_layer_8 Layer8
 render_layer_9 Layer9
 
+compute_buffer_type_readwrite ReadWrite
+
 material_param_uint UInt
 material_param_uint2 UInt2
 material_param_uint3 UInt3
