@@ -49,7 +49,7 @@ hand_system_  input_hand_get_system        ();
 hand_t*       input_hand_ref               (handed_ hand);
 void          input_hand_refresh_system    ();
 void          input_hand_update_poses      ();
-bool          input_hand_get_visible       (handed_ hand);
+bool32_t      input_hand_get_visible       (handed_ hand);
 hand_joint_t* input_hand_get_pose_buffer   (handed_ hand);
 void          input_hand_sim               (handed_ handedness, bool center_on_finger,  vec3 hand_pos, quat orientation, bool tracked);
 void          input_hand_sim_poses         (handed_ handedness, bool mouse_adjustments, vec3 hand_pos, quat orientation);

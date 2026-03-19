@@ -23,6 +23,7 @@
 #include "../systems/render.h"
 #include "../systems/render_pipeline.h"
 #include "../systems/world.h"
+#include "../ui/interactor_modes.h"
 #include "../asset_types/anchor.h"
 
 namespace sk {
@@ -112,6 +113,9 @@ bool simulator_init() {
 	if (sim_skr_surface.size.x > 0 && sim_skr_surface.size.y > 0)
 		sim_surface_resize(sim_surface, sim_skr_surface.size.x, sim_skr_surface.size.y);
 
+	interactor_modes_set_default(default_interactors_mouse);
+	input_hand_visible(handed_max, false);
+	input_set_finger_glow(false);
 	anchors_init();
 	return true;
 }

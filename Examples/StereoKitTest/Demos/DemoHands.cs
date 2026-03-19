@@ -120,7 +120,6 @@ class DemoHands : ITest
 	}
 
 	Pose optionsPose = new Pose(-0.2f, 0, 0);
-	bool showHands     = true;
 	bool showJoints    = false;
 	bool showAxes      = true;
 	bool showPointers  = true;
@@ -137,12 +136,16 @@ class DemoHands : ITest
 
 		UI.PanelBegin(UIPad.Inside);
 		UI.Label("Show");
-		if (UI.Toggle("Hands", ref showHands,     size))
+		bool showHands = Input.HandGetVisible(Handed.Max);
+		if (UI.Toggle("Hands", ref showHands, size))
 			Input.HandVisible(Handed.Max, showHands);
 		UI.SameLine();
-		UI.Toggle("Joints",    ref showJoints,    size);
+		bool glow = Input.FingerGlow;
+		if (UI.Toggle("Glow", ref glow, size))
+			Input.FingerGlow = glow;
 		UI.SameLine();
-		UI.Toggle("Axes",      ref showAxes,      size);
+		UI.Toggle("Joints",    ref showJoints,    size);
+
 
 		UI.Toggle("Hand Size", ref showHandSize,  size);
 		UI.SameLine();
@@ -151,6 +154,8 @@ class DemoHands : ITest
 		UI.Toggle("Menu",      ref showHandMenus, size);
 
 		UI.Toggle("Pinch Pt" , ref showPinchPt,   size);
+		UI.SameLine();
+		UI.Toggle("Axes",      ref showAxes,      size);
 		UI.PanelEnd();
 
 		UI.HSeparator();

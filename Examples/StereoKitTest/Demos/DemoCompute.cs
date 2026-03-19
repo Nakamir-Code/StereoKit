@@ -39,7 +39,7 @@ class DemoCompute : ITest
 		bufferB = new ComputeBuffer<Cell>(ComputeBufferType.ReadWrite, SimSize * SimSize);
 		ResetSim();
 
-		output = new Tex(TexType.ImageNomips | TexType.Compute, TexFormat.Rgba128);
+		output = new Tex(TexType.ImageNomips | TexType.Compute, TexFormat.Rgba32Linear);
 		output.SetSize(SimSize, SimSize);
 
 		// Ping: read A -> write B

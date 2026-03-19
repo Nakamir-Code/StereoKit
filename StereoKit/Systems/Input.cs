@@ -521,6 +521,15 @@ namespace StereoKit
 		/// doesn't.</param>
 		public static void HandVisible(Handed hand, bool visible)
 			=> NativeAPI.input_hand_visible(hand, visible);
+		/// <summary>Returns whether StereoKit is set to render the
+		/// given hand. If Handed.Max is provided, this returns true
+		/// if either hand is visible.</summary>
+		/// <param name="hand">The hand to check visibility for, or
+		/// Handed.Max to check if either hand is visible.</param>
+		/// <returns>True if StereoKit renders this hand, false if
+		/// not.</returns>
+		public static bool HandGetVisible(Handed hand)
+			=> NativeAPI.input_hand_get_visible(hand);
 		/// <summary>Set the Material used to render the hand! The default
 		/// material uses an offset of 10 to ensure it gets drawn overtop of
 		/// other elements.</summary>
