@@ -855,7 +855,7 @@ void tex_add_zbuffer(tex_t texture, tex_format_ format) {
 
 	char id[64];
 	assets_unique_name(asset_type_tex, "sk/tex/zbuffer/", id, sizeof(id));
-	texture->depth_buffer = tex_create(tex_type_depth, format);
+	texture->depth_buffer = tex_create(tex_type_zbuffer, format);
 	tex_set_id       (texture->depth_buffer, id);
 	tex_set_color_arr(texture->depth_buffer, texture->width, texture->height, nullptr, texture->gpu_tex.layer_count, skr_tex_get_multisample(&texture->gpu_tex), nullptr);
 	texture->depth_buffer->header.state = asset_state_loaded;
@@ -905,6 +905,7 @@ void tex_set_surface(tex_t texture, void *native_surface, tex_type_ type, int64_
 		skr_tex_external_info_t info = {};
 		info.image         = (VkImage)native_surface;
 		info.format        = skr_tex_fmt_from_native((uint32_t)native_fmt);
+		info.flags         = tex_type_to_skr_flags(type);
 		info.size          = { width, height, 1 };
 		info.sampler       = tex_get_skr_sampler(texture);
 		info.multisample   = multisample;
