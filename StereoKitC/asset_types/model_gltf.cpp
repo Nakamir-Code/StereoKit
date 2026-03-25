@@ -519,6 +519,61 @@ void gltf_apply_sampler(tex_t to_tex, cgltf_sampler *sampler) {
 
 ///////////////////////////////////////////
 
+// Decodes a base64 data URI into a newly allocated buffer. Returns
+// true on success. The caller must free the returned buffer with
+// sk_free.
+bool gltf_decode_data_uri(const char *uri, void **out_data, size_t *out_size) {
+	if (uri == nullptr || strncmp(uri, "data:", 5) != 0)
+		return false;
+
+	const char *comma = strchr(uri, ',');
+	if (!comma || comma - uri < 7 || strncmp(comma - 7, ";base64", 7) != 0)
+		return false;
+
+	const char *base64      = comma + 1;
+	size_t      base64_len  = strlen(base64);
+	size_t      decoded_size = base64_len - base64_len / 4;
+	if (base64_len >= 2) {
+		decoded_size -= base64[base64_len - 2] == '=';
+		decoded_size -= base64[base64_len - 1] == '=';
+	}
+
+	cgltf_options options = {};
+	options.memory.alloc_func = [](void *, cgltf_size size) { return sk_malloc(size); };
+	options.memory.free_func  = [](void *, void*      data) { sk_free(data); };
+	if (cgltf_load_buffer_base64(&options, decoded_size, base64, out_data) != cgltf_result_success)
+		return false;
+
+	*out_size = decoded_size;
+	return true;
+}
+
+///////////////////////////////////////////
+
+// Resolves image data from a cgltf_image into a pointer+size or
+// filename. Returns false if the image can't be resolved. When
+// out_data is non-null, the data either points into the glTF buffer
+// (buffer_view case, not owned) or is a new allocation (base64 case,
+// caller must free). Check image->buffer_view to distinguish.
+bool gltf_resolve_image(cgltf_data *data, cgltf_image *image, const char *filename, void **out_data, size_t *out_size, char *out_filename, int32_t out_filename_size) {
+	*out_data = nullptr;
+	*out_size = 0;
+
+	if (image->buffer_view != nullptr && image->buffer_view->buffer->data != nullptr) {
+		*out_data = (void*)((uint8_t*)image->buffer_view->buffer->data + image->buffer_view->offset);
+		*out_size = image->buffer_view->size;
+		return true;
+	} else if (gltf_decode_data_uri(image->uri, out_data, out_size)) {
+		return true;
+	} else if (image->uri != nullptr && strstr(image->uri, "://") == nullptr) {
+		gltf_imagename(data, image, filename, out_filename, out_filename_size);
+		return true;
+	}
+	return false;
+}
+
+///////////////////////////////////////////
+
 tex_t gltf_parsetexture(cgltf_data* data, cgltf_texture *tex, const char *filename, bool srgb_data, int32_t priority, array_t<const char*>* warnings) {
 	cgltf_image *image = tex->has_basisu
 		? tex->basisu_image
@@ -535,38 +590,21 @@ tex_t gltf_parsetexture(cgltf_data* data, cgltf_texture *tex, const char *filena
 		return result;
 	}
 
-	if (image->buffer_view != nullptr) {
-		// If it's already a loaded buffer, like in a .glb
-		result = tex_create_mem((void*)((uint8_t*)image->buffer_view->buffer->data + image->buffer_view->offset), image->buffer_view->size, srgb_data, priority);
-		if (result == nullptr) 
+	void   *img_data = nullptr;
+	size_t  img_size = 0;
+	if (!gltf_resolve_image(data, image, filename, &img_data, &img_size, id, 512))
+		return nullptr;
+
+	if (img_data != nullptr) {
+		result = tex_create_mem(img_data, img_size, srgb_data, priority);
+		// Free base64-decoded data (tex_create_mem copies it).
+		// Buffer view pointers are into the cgltf buffer, not ours.
+		if (image->buffer_view == nullptr)
+			sk_free(img_data);
+		if (result == nullptr)
 			log_warnf("[%s] Couldn't load texture: %s", filename, image->name);
 		else
 			tex_set_id(result, id);
-	} else if (image->uri != nullptr && strncmp(image->uri, "data:", 5) == 0) {
-		// If it's an image file encoded in a base64 string
-		char* start = strchr(image->uri, ',');
-		if (start != nullptr && start - image->uri >= 7 && strncmp(start - 7, ";base64", 7) == 0) {
-			void*         buffer  = nullptr;
-			cgltf_options options = {};
-
-			char*  base64_start = start + 1;
-			size_t base64_len   = strlen(base64_start);
-
-			// A base64 string may end with 0, 1 or 2 '=' padding characters,
-			// padding is present to ensure data is a multiple of 3.
-			size_t base64_size = 3 * (base64_len / 4);
-			if (base64_len >= 1 && base64_start[base64_len-1] == '=') { base64_size -= 1; }
-			if (base64_len >= 2 && base64_start[base64_len-2] == '=') { base64_size -= 1; }
-
-			 // find the size of the data in bytes, there's 6 bits of data encoded in 8 bits of base64
-			cgltf_load_buffer_base64(&options, base64_size, base64_start, &buffer);
-
-			if (buffer != nullptr) {
-				result = tex_create_mem(buffer, base64_size, srgb_data, priority);
-				tex_set_id(result, id);
-				sk_free(buffer);
-			}
-		}
 	} else if (image->uri != nullptr && strstr(image->uri, "://") == nullptr) {
 		// If it's a file path to an external image file
 		result = tex_create_file(id, srgb_data, priority);
@@ -617,15 +655,13 @@ material_t gltf_parsematerial(cgltf_data *data, cgltf_material *material, const 
 		} else if (is_lightmap) {
 			result = material_create(shader_find(default_id_shader_lightmap));
 		} else if (material->unlit) {
-			if (material->alpha_mode == cgltf_alpha_mode_mask)
-				result = material_copy_id(default_id_material_unlit_clip);
-			else
-				result = material_copy_id(default_id_material_unlit);
+			result = material->alpha_mode == cgltf_alpha_mode_mask
+				? material_copy_id(default_id_material_unlit_clip)
+				: material_copy_id(default_id_material_unlit);
 		} else if (material->has_pbr_metallic_roughness) {
-			if (material->alpha_mode == cgltf_alpha_mode_mask)
-				result = material_copy_id(default_id_material_pbr_clip);
-			else
-				result = material_copy_id(default_id_material_pbr);
+			result = material->alpha_mode == cgltf_alpha_mode_mask
+				? material_copy_id(default_id_material_pbr_clip)
+				: material_copy_id(default_id_material_pbr);
 		} else {
 			result = material_copy_id(default_id_material);
 		}
@@ -643,6 +679,7 @@ material_t gltf_parsematerial(cgltf_data *data, cgltf_material *material, const 
 		return result;
 
 	cgltf_texture *tex = nullptr;
+	bool ao_handled = false;
 	if (material->has_pbr_metallic_roughness) {
 		tex = material->pbr_metallic_roughness.base_color_texture.texture;
 		if (tex != nullptr && material_has_param(result, "diffuse", material_param_texture)) {
@@ -656,7 +693,77 @@ material_t gltf_parsematerial(cgltf_data *data, cgltf_material *material, const 
 		}
 
 		tex = material->pbr_metallic_roughness.metallic_roughness_texture.texture;
-		if (tex != nullptr && material_has_param(result, "metal", material_param_texture)) {
+		cgltf_texture *ao_tex = material->occlusion_texture.texture;
+
+		// When both metallic/roughness and occlusion textures are present,
+		// pack them into a single ORM texture to save memory.
+		if (tex != nullptr && ao_tex != nullptr && !is_lightmap && material_has_param(result, "metal", material_param_texture)) {
+			cgltf_image *metal_img = tex   ->has_basisu ? tex   ->basisu_image : tex   ->image;
+			cgltf_image *ao_img    = ao_tex->has_basisu ? ao_tex->basisu_image : ao_tex->image;
+
+			if (metal_img == ao_img && metal_img != nullptr) {
+				// Same underlying image - already ORM packed
+				tex_t parse_tex = gltf_parsetexture(data, tex, filename, false, 13, warnings);
+				if (parse_tex != nullptr) {
+					tex_set_fallback(parse_tex, sk_default_tex_rough);
+					material_set_texture(result, "metal", parse_tex);
+					tex_release(parse_tex);
+					ao_handled = true;
+				}
+			} else if (metal_img != nullptr && ao_img != nullptr) {
+				// Different images - pack AO(R) + metal/rough(GB) into
+				// one texture via tex_create_packed
+
+				// Check for a cached packed texture first
+				char metal_id[512], ao_id[512], packed_id[512];
+				gltf_imagename(data, metal_img, filename, metal_id, 512);
+				gltf_imagename(data, ao_img,    filename, ao_id,    512);
+				snprintf(packed_id, sizeof(packed_id), "packed:%s+%s", metal_id, ao_id);
+
+				tex_t packed = tex_find(packed_id);
+				if (packed == nullptr) {
+					// Resolve raw image data for both sources
+					void   *metal_data = nullptr, *ao_data = nullptr;
+					size_t  metal_size = 0,        ao_size = 0;
+					char    metal_file[512],       ao_file[512];
+
+					bool metal_ok = gltf_resolve_image(data, metal_img, filename, &metal_data, &metal_size, metal_file, 512);
+					bool ao_ok    = gltf_resolve_image(data, ao_img,    filename, &ao_data,    &ao_size,    ao_file,    512);
+
+					if (metal_ok && ao_ok) {
+						tex_pack_source_t sources[2] = {};
+						sources[0].data           = ao_data;
+						sources[0].data_size      = ao_size;
+						sources[0].filename       = ao_data    == nullptr ? ao_file    : nullptr;
+						sources[0].channel_map[0] = 'R'; // AO.R -> output.R
+						sources[1].data           = metal_data;
+						sources[1].data_size      = metal_size;
+						sources[1].filename       = metal_data == nullptr ? metal_file : nullptr;
+						sources[1].channel_map[1] = 'G'; // metal.G -> output.G (roughness)
+						sources[1].channel_map[2] = 'B'; // metal.B -> output.B (metallic)
+
+						packed = tex_create_packed(sources, 2, { 1,1,0,1 }, false, 13);
+						if (packed != nullptr)
+							tex_set_id(packed, packed_id);
+					}
+
+					// Free any base64-decoded allocations
+					if (metal_img->buffer_view == nullptr) sk_free(metal_data);
+					if (ao_img   ->buffer_view == nullptr) sk_free(ao_data);
+				}
+
+				if (packed != nullptr) {
+					tex_set_fallback(packed, sk_default_tex_rough);
+					gltf_apply_sampler(packed, tex->sampler);
+					material_set_texture(result, "metal", packed);
+					tex_release(packed);
+					ao_handled = true;
+				}
+			}
+		}
+
+		// Fallback: load metal/rough separately if packing didn't happen
+		if (!ao_handled && tex != nullptr && material_has_param(result, "metal", material_param_texture)) {
 			if (material->pbr_metallic_roughness.metallic_roughness_texture.texcoord != 0) gltf_add_warning(warnings, "StereoKit doesn't support loading multiple texture coordinate channels yet.");
 			tex_t parse_tex = gltf_parsetexture(data, tex, filename, false, 13, warnings);
 			if (parse_tex != nullptr) {
@@ -712,20 +819,22 @@ material_t gltf_parsematerial(cgltf_data *data, cgltf_material *material, const 
 		}
 	}
 
-	tex = material->occlusion_texture.texture;
-	const char* param = is_lightmap ? "lightmap" : "occlusion";
-	if (tex != nullptr && material_has_param(result, param, material_param_texture)) {
-		if (material->occlusion_texture.texcoord != 0 && is_lightmap == false) gltf_add_warning(warnings, "StereoKit doesn't support multiple texture coordinate channels yet.");
-		tex_t parse_tex = gltf_parsetexture(data, tex, filename, is_lightmap ? true : false, 11, warnings);
-		if (parse_tex != nullptr) {
-			tex_set_fallback(parse_tex, sk_default_tex);
-			material_set_texture(result, param, parse_tex);
-			tex_release(parse_tex);
+	// Lightmap materials use the occlusion texture as a lightmap via a
+	// separate shader that still has a "lightmap" texture slot.
+	if (is_lightmap) {
+		tex = material->occlusion_texture.texture;
+		if (tex != nullptr && material_has_param(result, "lightmap", material_param_texture)) {
+			tex_t parse_tex = gltf_parsetexture(data, tex, filename, true, 11, warnings);
+			if (parse_tex != nullptr) {
+				tex_set_fallback(parse_tex, sk_default_tex);
+				material_set_texture(result, "lightmap", parse_tex);
+				tex_release(parse_tex);
+			}
 		}
 	}
 
 	tex = material->emissive_texture.texture;
-	param = is_lightmap ? "diffuse" : "emission";
+	const char *param = is_lightmap ? "diffuse" : "emission";
 	if (tex != nullptr && material_has_param(result, param, material_param_texture)) {
 		if (material->emissive_texture.texcoord != 0) gltf_add_warning(warnings, "StereoKit doesn't support multiple texture coordinate channels yet.");
 		gltf_set_material_transform(result, &material->emissive_texture);
