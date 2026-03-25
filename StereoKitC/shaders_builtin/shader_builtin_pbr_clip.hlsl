@@ -10,18 +10,15 @@ float  metallic        = 0;
 float  roughness       = 1;
 float  cutoff          = 0.5;
 
-//--diffuse   = white
-//--emission  = white
-//--metal     = white
-//--occlusion = white
-Texture2D    diffuse     : register(t0);
-SamplerState diffuse_s   : register(s0);
-Texture2D    emission    : register(t1);
-SamplerState emission_s  : register(s1);
-Texture2D    metal       : register(t2);
-SamplerState metal_s     : register(s2);
-Texture2D    occlusion   : register(t3);
-SamplerState occlusion_s : register(s3);
+//--diffuse  = white
+//--emission = white
+//--metal    = white
+Texture2D    diffuse   : register(t0);
+SamplerState diffuse_s : register(s0);
+Texture2D    emission  : register(t1);
+SamplerState emission_s: register(s1);
+Texture2D    metal     : register(t2);
+SamplerState metal_s   : register(s2);
 
 struct vsIn {
 	float4 pos       : SV_Position;
@@ -58,14 +55,10 @@ float4 ps(psIn input) : SV_TARGET {
 	if (albedo.a < (half)cutoff) discard;
 	albedo *= input.color;
 
-	half2 metal_rough = (half2)metal    .Sample(metal_s,     input.uv).gb; // rough is g, b is metallic
-	half  ao          = (half )occlusion.Sample(occlusion_s, input.uv).r;  // occlusion is sometimes part of the metal tex, uses r channel
-	half3 emissive    = (half3)emission .Sample(emission_s,  input.uv).rgb * (half3)emission_factor.rgb;
+	half3 orm      = (half3)metal   .Sample(metal_s,    input.uv).rgb; // r=occlusion, g=roughness, b=metallic
+	half3 emissive = (half3)emission.Sample(emission_s, input.uv).rgb;
 
-	half metallic_final = metal_rough.y * (half)metallic;
-	half rough_final    = metal_rough.x * (half)roughness;
-
-	float4 color = sk_pbr_shade(albedo, input.irradiance, ao, metallic_final, rough_final, input.view_dir, input.normal);
-	color.rgb += (float3)emissive;
+	float4 color = sk_pbr_shade(albedo, input.irradiance, orm.r, orm.b * (half)metallic, orm.g * (half)roughness, input.view_dir, input.normal);
+	color.rgb += (float3)(emissive * (half3)emission_factor.rgb);
 	return color;
 }
