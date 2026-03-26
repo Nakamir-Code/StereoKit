@@ -64,15 +64,16 @@ void render_pipeline_draw() {
 		render_draw_queue(list, s->view_matrices, s->proj_matrices, 0, s->array_count, s->layer, 0);
 
 		skr_pass_t pass = {};
-		pass.color       = &s->tex->gpu_tex;
-		pass.depth       = depth_tex;
-		pass.resolve     = s->resolve_target;
-		pass.clear       = clear_flags;
-		pass.clear_color = clear_color;
-		pass.clear_depth = 1.0f;
-		pass.viewport    = { 0, 0, (float)width, (float)height };
-		pass.scissor     = { 0, 0, width, height };
-		pass.view_count  = s->array_count;
+		pass.color            = &s->tex->gpu_tex;
+		pass.depth            = depth_tex;
+		pass.resolve          = s->resolve_target;
+		pass.clear            = clear_flags;
+		pass.clear_color      = clear_color;
+		pass.clear_depth      = 1.0f;
+		pass.viewport         = { 0, 0, (float)width, (float)height };
+		pass.scissor          = { 0, 0, width, height };
+		pass.view_count       = s->array_count;
+		pass.views_correlated = s->array_count > 1;
 		render_pass_add_draw(&pass);
 		skr_pass_submit(&pass);
 	}

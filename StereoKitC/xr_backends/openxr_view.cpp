@@ -465,7 +465,11 @@ bool openxr_display_swapchain_update(device_display_t *display) {
 
 			for (uint32_t i = 0; i < sc_color->backbuffer_count; i++) {
 				sc_color->textures[i] = tex_create(tex_type_rendertarget, tex_get_tex_format(xr_preferred_color_format));
-				sc_depth->textures[i] = tex_create(tex_type_depth,        tex_get_tex_format(xr_preferred_depth_format));
+				// Use readable depth (tex_type_depth) only when depth composition
+				// is active — the runtime needs to read it. Otherwise use write-only
+				// (tex_type_zbuffer) to avoid storing depth to main memory on tilers.
+				tex_type_ depth_type = xr_ext_composition_depth_available() ? tex_type_depth : tex_type_zbuffer;
+				sc_depth->textures[i] = tex_create(depth_type, tex_get_tex_format(xr_preferred_depth_format));
 
 				char           name[64];
 				static int32_t target_index = 0;
@@ -484,8 +488,9 @@ bool openxr_display_swapchain_update(device_display_t *display) {
 			// called, so we pass owned=false here.
 			void *native_surface_col   = (void*)sc_color->backbuffers[back].image;
 			void *native_surface_depth = (void*)sc_depth->backbuffers[back].image;
+			tex_type_ depth_type = xr_ext_composition_depth_available() ? tex_type_depth : tex_type_zbuffer;
 			tex_set_surface(sc_color->textures[back], native_surface_col,   tex_type_rendertarget, xr_preferred_color_format, sc_color->width, sc_color->height, array_count, 1, false);
-			tex_set_surface(sc_depth->textures[back], native_surface_depth, tex_type_depth,        xr_preferred_depth_format, sc_depth->width, sc_depth->height, array_count, 1, false);
+			tex_set_surface(sc_depth->textures[back], native_surface_depth, depth_type,            xr_preferred_depth_format, sc_depth->width, sc_depth->height, array_count, 1, false);
 			tex_set_zbuffer(sc_color->textures[back], sc_depth->textures[back]);
 		}
 
