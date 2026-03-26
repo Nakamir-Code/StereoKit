@@ -261,6 +261,7 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       tex_create_file_arr([In] string[] in_arr_files, int file_count, [MarshalAs(UnmanagedType.Bool)] bool srgb_data, int priority);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       tex_create_cubemap_file([MarshalAs(UnmanagedType.LPUTF8Str)] string cubemap_file_utf8, [MarshalAs(UnmanagedType.Bool)] bool srgb_data, int priority);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       tex_create_cubemap_files([In] string[] in_arr_cube_face_file_xxyyzz, [MarshalAs(UnmanagedType.Bool)] bool srgb_data, int priority);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       tex_create_packed([In] TexPackSource[] in_arr_sources, int source_count, Color default_color, [MarshalAs(UnmanagedType.Bool)] bool srgb_data, int priority);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       tex_copy(IntPtr texture, TexType type, TexFormat format);
 		[return: MarshalAs(UnmanagedType.Bool)]
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         tex_gen_mips(IntPtr texture);

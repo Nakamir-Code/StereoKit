@@ -130,7 +130,7 @@ void input_render_step_late() {
 			}
 		} else if (source == hand_source_simulated) {
 			const hand_t* hand = input_hand((handed_)i);
-			if ((hand->tracked_state & button_state_active) != 0 && local.hand_material[i] != nullptr) {
+			if (interaction_get_default_interactors() == default_interactors_hands && (hand->tracked_state & button_state_active) != 0 && local.hand_material[i] != nullptr) {
 				input_hand_update_fallback_mesh((handed_)i, &local.hand_fallback_mesh[i]);
 				render_add_mesh(local.hand_fallback_mesh[i].mesh, local.hand_material[i], local.hand_fallback_mesh[i].root_transform, hand->pinch_state & button_state_active ? color128{ 1.5f, 1.5f, 1.5f, 1 } : color128{ 1,1,1,1 });
 			} else {
