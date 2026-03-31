@@ -75,6 +75,7 @@ void   platform_set_window        (void *window);
 void   platform_set_window_xam    (void *window);
 
 bool   platform_file_delete       (const char* filename);
+bool   platform_asset_exists      (const char* filename);
 char  *platform_push_path_ref     (char       *path, const char *directory);
 char  *platform_pop_path_ref      (char       *path);
 char  *platform_push_path_new     (const char *path, const char *directory);
