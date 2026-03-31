@@ -679,7 +679,6 @@ material_t gltf_parsematerial(cgltf_data *data, cgltf_material *material, const 
 		return result;
 
 	cgltf_texture *tex = nullptr;
-	bool ao_handled = false;
 	if (material->has_pbr_metallic_roughness) {
 		tex = material->pbr_metallic_roughness.base_color_texture.texture;
 		if (tex != nullptr && material_has_param(result, "diffuse", material_param_texture)) {
@@ -693,98 +692,13 @@ material_t gltf_parsematerial(cgltf_data *data, cgltf_material *material, const 
 		}
 
 		tex = material->pbr_metallic_roughness.metallic_roughness_texture.texture;
-		cgltf_texture *ao_tex = material->occlusion_texture.texture;
-
-		// Always pack metallic/roughness through the packer to ensure
-		// the R channel has valid AO data. Standard glTF metal/rough
-		// textures have R=0 (unused), which reads as zero occlusion if
-		// loaded directly. The packer's default color fills R=1 (full
-		// occlusion) when no AO source is present.
-		if (tex != nullptr && !is_lightmap && material_has_param(result, "metal", material_param_texture)) {
+		if (tex != nullptr && material_has_param(result, "metal", material_param_texture)) {
 			if (material->pbr_metallic_roughness.metallic_roughness_texture.texcoord != 0) gltf_add_warning(warnings, "StereoKit doesn't support loading multiple texture coordinate channels yet.");
-			cgltf_image *metal_img = tex->has_basisu ? tex->basisu_image : tex->image;
-			cgltf_image *ao_img    = ao_tex != nullptr
-				? (ao_tex->has_basisu ? ao_tex->basisu_image : ao_tex->image)
-				: nullptr;
-
-			if (ao_img != nullptr && metal_img == ao_img) {
-				// Same underlying image - already ORM packed
-				tex_t parse_tex = gltf_parsetexture(data, tex, filename, false, 13, warnings);
-				if (parse_tex != nullptr) {
-					tex_set_fallback(parse_tex, sk_default_tex_rough);
-					material_set_texture(result, "metal", parse_tex);
-					tex_release(parse_tex);
-					ao_handled = true;
-				}
-			} else if (metal_img != nullptr) {
-				// Pack metal/rough (GB) with AO (R) if present,
-				// otherwise default fills R=1 for full occlusion.
-				char packed_id[512];
-				char metal_id[512];
-				gltf_imagename(data, metal_img, filename, metal_id, 512);
-
-				if (ao_img != nullptr) {
-					char ao_id[512];
-					gltf_imagename(data, ao_img, filename, ao_id, 512);
-					snprintf(packed_id, sizeof(packed_id), "packed:%s+%s", metal_id, ao_id);
-				} else {
-					snprintf(packed_id, sizeof(packed_id), "packed:%s", metal_id);
-				}
-
-				tex_t packed = tex_find(packed_id);
-				if (packed == nullptr) {
-					void  *metal_data = nullptr;
-					size_t metal_size = 0;
-					char   metal_file[512];
-					bool   metal_ok = gltf_resolve_image(data, metal_img, filename, &metal_data, &metal_size, metal_file, 512);
-
-					int32_t           source_count = 0;
-					tex_pack_source_t sources[2]   = {};
-
-					// AO source (optional)
-					void  *ao_data = nullptr;
-					size_t ao_size = 0;
-					char   ao_file[512] = {};
-					bool   ao_ok = false;
-					if (ao_img != nullptr) {
-						ao_ok = gltf_resolve_image(data, ao_img, filename, &ao_data, &ao_size, ao_file, 512);
-						if (ao_ok) {
-							sources[source_count].data           = ao_data;
-							sources[source_count].data_size      = ao_size;
-							sources[source_count].filename       = ao_data == nullptr ? ao_file : nullptr;
-							sources[source_count].channel_map[0] = 'R'; // AO.R -> output.R
-							source_count++;
-						}
-					}
-
-					// Metal/rough source
-					if (metal_ok) {
-						sources[source_count].data           = metal_data;
-						sources[source_count].data_size      = metal_size;
-						sources[source_count].filename       = metal_data == nullptr ? metal_file : nullptr;
-						sources[source_count].channel_map[1] = 'G'; // metal.G -> output.G (roughness)
-						sources[source_count].channel_map[2] = 'B'; // metal.B -> output.B (metallic)
-						source_count++;
-					}
-
-					if (source_count > 0) {
-						packed = tex_create_packed(sources, source_count, { 1,0,0,1 }, false, 13);
-						if (packed != nullptr)
-							tex_set_id(packed, packed_id);
-					}
-
-					// Free any base64-decoded allocations
-					if (metal_img->buffer_view == nullptr) sk_free(metal_data);
-					if (ao_img != nullptr && ao_img->buffer_view == nullptr) sk_free(ao_data);
-				}
-
-				if (packed != nullptr) {
-					tex_set_fallback(packed, sk_default_tex_rough);
-					gltf_apply_sampler(packed, tex->sampler);
-					material_set_texture(result, "metal", packed);
-					tex_release(packed);
-					ao_handled = true;
-				}
+			tex_t parse_tex = gltf_parsetexture(data, tex, filename, false, 13, warnings);
+			if (parse_tex != nullptr) {
+				tex_set_fallback(parse_tex, sk_default_tex_rough);
+				material_set_texture(result, "metal", parse_tex);
+				tex_release(parse_tex);
 			}
 		}
 
@@ -834,22 +748,20 @@ material_t gltf_parsematerial(cgltf_data *data, cgltf_material *material, const 
 		}
 	}
 
-	// Lightmap materials use the occlusion texture as a lightmap via a
-	// separate shader that still has a "lightmap" texture slot.
-	if (is_lightmap) {
-		tex = material->occlusion_texture.texture;
-		if (tex != nullptr && material_has_param(result, "lightmap", material_param_texture)) {
-			tex_t parse_tex = gltf_parsetexture(data, tex, filename, true, 11, warnings);
-			if (parse_tex != nullptr) {
-				tex_set_fallback(parse_tex, sk_default_tex);
-				material_set_texture(result, "lightmap", parse_tex);
-				tex_release(parse_tex);
-			}
+	tex = material->occlusion_texture.texture;
+	const char* param = is_lightmap ? "lightmap" : "occlusion";
+	if (tex != nullptr && material_has_param(result, param, material_param_texture)) {
+		if (material->occlusion_texture.texcoord != 0 && is_lightmap == false) gltf_add_warning(warnings, "StereoKit doesn't support multiple texture coordinate channels yet.");
+		tex_t parse_tex = gltf_parsetexture(data, tex, filename, is_lightmap ? true : false, 11, warnings);
+		if (parse_tex != nullptr) {
+			tex_set_fallback(parse_tex, sk_default_tex);
+			material_set_texture(result, param, parse_tex);
+			tex_release(parse_tex);
 		}
 	}
 
 	tex = material->emissive_texture.texture;
-	const char *param = is_lightmap ? "diffuse" : "emission";
+	param = is_lightmap ? "diffuse" : "emission";
 	if (tex != nullptr && material_has_param(result, param, material_param_texture)) {
 		if (material->emissive_texture.texcoord != 0) gltf_add_warning(warnings, "StereoKit doesn't support multiple texture coordinate channels yet.");
 		gltf_set_material_transform(result, &material->emissive_texture);

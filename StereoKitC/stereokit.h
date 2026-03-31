@@ -1245,32 +1245,6 @@ typedef enum tex_type_ {
 } tex_type_;
 SK_MakeFlag(tex_type_);
 
-/*Describes a source image for channel packing via
-  `tex_create_packed`. Provide either a filename or in-memory data.
-  The channel_map is a fixed 4-byte array where each position
-  represents an output channel (RGBA), and the value selects which
-  source channel to read: 'R', 'G', 'B', 'A', or 0 to skip. For
-  example, {0,'G','B',0} copies source green to output green and
-  source blue to output blue.*/
-typedef struct tex_pack_source_t {
-	/*File path for the source image, or NULL if providing
-	  in-memory data instead.*/
-	const char  *filename;
-	/*Pointer to encoded image file data (PNG, JPEG, etc.), or
-	  NULL if using a filename instead.*/
-	const void  *data;
-	/*Size of the data buffer in bytes, ignored when using a
-	  filename.*/
-	size_t       data_size;
-	/*A 4-byte channel map. Each position is an output channel
-	  (0=R, 1=G, 2=B, 3=A). The value selects which source
-	  channel to read: 'R', 'G', 'B', 'A', or 0 to skip.
-	  Examples: {'R',0,0,0} copies source R to output R.
-	  {0,0,0,'R'} copies source R to output A. {0,'B','G',0}
-	  swaps green and blue.*/
-	uint8_t      channel_map[4];
-} tex_pack_source_t;
-
 /*How does the shader grab pixels from the texture? Or more
   specifically, how does the shader grab colors between the provided
   pixels? If you'd like an in-depth explanation of these topics, check
@@ -1352,7 +1326,6 @@ SK_API tex_t        tex_create_file         (const char *file_utf8,             
 SK_API tex_t        tex_create_file_arr     (const char **in_arr_files, int32_t file_count, bool32_t srgb_data sk_default(true), int32_t priority sk_default(10));
 SK_API tex_t        tex_create_cubemap_file (const char *cubemap_file_utf8,                 bool32_t srgb_data sk_default(true), int32_t priority sk_default(10));
 SK_API tex_t        tex_create_cubemap_files(const char **in_arr_cube_face_file_xxyyzz,     bool32_t srgb_data sk_default(true), int32_t priority sk_default(10));
-SK_API tex_t        tex_create_packed       (const tex_pack_source_t *in_arr_sources, int32_t source_count, color128 default_color sk_default({}), bool32_t srgb_data sk_default(false), int32_t priority sk_default(10));
 SK_API tex_t        tex_copy                (const tex_t texture, tex_type_ type sk_default(tex_type_image), tex_format_ format sk_default(tex_format_none));
 SK_API bool32_t     tex_gen_mips            (tex_t texture);
 SK_API void         tex_set_id              (tex_t texture, const char *id);

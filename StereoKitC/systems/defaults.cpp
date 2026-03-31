@@ -8,6 +8,8 @@
 #include "../libraries/default_controller_r.h"
 #include "../libraries/profiler.h"
 
+#include "../libraries/stref.h"
+
 #include <string.h>
 
 namespace sk {
@@ -62,6 +64,26 @@ sound_t      sk_default_grab;
 sound_t      sk_default_ungrab;
 model_t      sk_default_controller_l;
 model_t      sk_default_controller_r;
+
+static shader_t shader_default_load(const char *name, const void *builtin_zip, size_t builtin_zip_size) {
+	char *path = string_append(nullptr, 3, "Override/shader_", name, ".hlsl.sks");
+
+	log_warnf("Checking override %s", path);
+	if (platform_asset_exists(path)) {
+		shader_t result = shader_create_file(path);
+		sk_free(path);
+		return result;
+	}
+	sk_free(path);
+
+	int32_t  size = 0;
+	void    *data = unzip_malloc((const uint8_t *)builtin_zip, builtin_zip_size, &size);
+	shader_t result = shader_create_mem(data, size);
+	sk_free(data);
+	return result;
+}
+
+///////////////////////////////////////////
 
 const spherical_harmonics_t sk_default_lighting = { {
 	{ 0.74f,  0.74f,  0.73f},
@@ -190,29 +212,24 @@ bool defaults_init() {
 	mesh_set_id(sk_default_cube,        default_id_mesh_cube);
 	mesh_set_id(sk_default_sphere,      default_id_mesh_sphere);
 
-	// Shaders
-	int32_t size = 0;
-	void*   data = nullptr;
-#define SHADER_DECODE(shader_mem) { sk_free(data); data = unzip_malloc(shader_mem, sizeof(shader_mem), &size); }
-	SHADER_DECODE(sks_shader_builtin_default_hlsl_zip    ); sk_default_shader             = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_blit_hlsl_zip       ); sk_default_shader_blit        = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_unlit_hlsl_zip      ); sk_default_shader_unlit       = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_unlit_clip_hlsl_zip ); sk_default_shader_unlit_clip  = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_lightmap_hlsl_zip   ); sk_default_shader_lightmap    = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_font_hlsl_zip       ); sk_default_shader_font        = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_equirect_hlsl_zip   ); sk_default_shader_equirect    = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_ui_hlsl_zip         ); sk_default_shader_ui          = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_ui_box_hlsl_zip     ); sk_default_shader_ui_box      = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_ui_quadrant_hlsl_zip); sk_default_shader_ui_quadrant = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_ui_aura_hlsl_zip    ); sk_default_shader_ui_aura     = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_skybox_hlsl_zip     ); sk_default_shader_sky         = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_lines_hlsl_zip      ); sk_default_shader_lines       = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_pbr_hlsl_zip        ); sk_default_shader_pbr         = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_pbr_clip_hlsl_zip   ); sk_default_shader_pbr_clip    = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_sh_compute_hlsl_zip ); sk_default_shader_sh_compute  = shader_create_mem(data, size);
-	SHADER_DECODE(sks_shader_builtin_depth_prepass_hlsl_zip); sk_default_shader_depth_prepass = shader_create_mem(data, size);
-	sk_free(data);
-#undef SHADER_DECODE
+	// Shaders - check Override/ folder first, fall back to builtins
+	sk_default_shader             = shader_default_load("default",      sks_shader_builtin_default_hlsl_zip,      sizeof(sks_shader_builtin_default_hlsl_zip));
+	sk_default_shader_blit        = shader_default_load("blit",         sks_shader_builtin_blit_hlsl_zip,         sizeof(sks_shader_builtin_blit_hlsl_zip));
+	sk_default_shader_unlit       = shader_default_load("unlit",        sks_shader_builtin_unlit_hlsl_zip,        sizeof(sks_shader_builtin_unlit_hlsl_zip));
+	sk_default_shader_unlit_clip  = shader_default_load("unlit_clip",   sks_shader_builtin_unlit_clip_hlsl_zip,   sizeof(sks_shader_builtin_unlit_clip_hlsl_zip));
+	sk_default_shader_lightmap    = shader_default_load("lightmap",     sks_shader_builtin_lightmap_hlsl_zip,     sizeof(sks_shader_builtin_lightmap_hlsl_zip));
+	sk_default_shader_font        = shader_default_load("font",         sks_shader_builtin_font_hlsl_zip,         sizeof(sks_shader_builtin_font_hlsl_zip));
+	sk_default_shader_equirect    = shader_default_load("equirect",     sks_shader_builtin_equirect_hlsl_zip,     sizeof(sks_shader_builtin_equirect_hlsl_zip));
+	sk_default_shader_ui          = shader_default_load("ui",           sks_shader_builtin_ui_hlsl_zip,           sizeof(sks_shader_builtin_ui_hlsl_zip));
+	sk_default_shader_ui_box      = shader_default_load("ui_box",       sks_shader_builtin_ui_box_hlsl_zip,       sizeof(sks_shader_builtin_ui_box_hlsl_zip));
+	sk_default_shader_ui_quadrant = shader_default_load("ui_quadrant",  sks_shader_builtin_ui_quadrant_hlsl_zip,  sizeof(sks_shader_builtin_ui_quadrant_hlsl_zip));
+	sk_default_shader_ui_aura     = shader_default_load("ui_aura",      sks_shader_builtin_ui_aura_hlsl_zip,      sizeof(sks_shader_builtin_ui_aura_hlsl_zip));
+	sk_default_shader_sky         = shader_default_load("skybox",       sks_shader_builtin_skybox_hlsl_zip,       sizeof(sks_shader_builtin_skybox_hlsl_zip));
+	sk_default_shader_lines       = shader_default_load("lines",        sks_shader_builtin_lines_hlsl_zip,        sizeof(sks_shader_builtin_lines_hlsl_zip));
+	sk_default_shader_pbr         = shader_default_load("pbr",          sks_shader_builtin_pbr_hlsl_zip,          sizeof(sks_shader_builtin_pbr_hlsl_zip));
+	sk_default_shader_pbr_clip    = shader_default_load("pbr_clip",     sks_shader_builtin_pbr_clip_hlsl_zip,     sizeof(sks_shader_builtin_pbr_clip_hlsl_zip));
+	sk_default_shader_sh_compute  = shader_default_load("sh_compute",   sks_shader_builtin_sh_compute_hlsl_zip,   sizeof(sks_shader_builtin_sh_compute_hlsl_zip));
+	sk_default_shader_depth_prepass = shader_default_load("depth_prepass", sks_shader_builtin_depth_prepass_hlsl_zip, sizeof(sks_shader_builtin_depth_prepass_hlsl_zip));
 	
 	// Android seems to give us a hard time about this one, so let's fall
 	// back at least somewhat gently.

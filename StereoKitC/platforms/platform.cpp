@@ -353,6 +353,15 @@ bool platform_file_exists(const char *filename) {
 
 ///////////////////////////////////////////
 
+bool platform_asset_exists(const char *filename) {
+	char *asset_filename = assets_file(filename);
+	bool  result         = platform_file_exists(asset_filename);
+	sk_free(asset_filename);
+	return result;
+}
+
+///////////////////////////////////////////
+
 bool platform_file_delete(const char* filename) {
 	return remove(filename) == 0;
 }

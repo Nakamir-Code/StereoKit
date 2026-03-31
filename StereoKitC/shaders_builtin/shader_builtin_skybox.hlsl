@@ -19,6 +19,6 @@ psIn vs(vsIn input, sk_ids_t ids) {
 	return o;
 }
 
-float4 ps(psIn input) : SV_TARGET {
+min16float4 ps(psIn input) : SV_TARGET {
 	return sk_cubemap.Sample(sk_cubemap_s, input.norm);
 }
