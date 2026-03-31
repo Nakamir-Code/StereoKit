@@ -89,8 +89,8 @@ float sk_finger_distance(float3 world_pos) {
 
 ///////////////////////////////////////////
 
-half sk_finger_glow(float3 world_pos) {
-	half d_sq = sk_finger_distance_sq(world_pos);
+min16float sk_finger_glow(float3 world_pos) {
+	min16float d_sq = sk_finger_distance_sq(world_pos);
 	return max(0, 1/(1+10000*d_sq)-0.0069h);
 }
 
