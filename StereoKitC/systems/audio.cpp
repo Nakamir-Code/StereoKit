@@ -26,7 +26,7 @@ ma_device         au_device         = {};
 ma_device         au_mic_device     = {};
 sound_t           au_mic_sound      = {};
 char             *au_mic_name       = nullptr;
-int32_t           au_mic_preset     = 0;
+mic_input_preset_ au_mic_preset     = mic_input_preset_default;
 bool              au_recording      = false;
 bool              au_paused         = false;
 
@@ -321,7 +321,7 @@ void mic_callback(ma_device*, void*, const void* input, ma_uint32 frame_count) {
 
 ///////////////////////////////////////////
 
-bool32_t mic_start(const char *device_name, int32_t input_preset) {
+bool32_t mic_start(const char *device_name, mic_input_preset_ input_preset) {
 	permission_state_ state = permission_state(permission_type_microphone);
 	if (state == permission_state_capable) {
 		// We can record, but we need to ask permission first!
@@ -379,7 +379,8 @@ bool32_t mic_start(const char *device_name, int32_t input_preset) {
 	config.sampleRate         = AU_SAMPLE_RATE;
 	config.dataCallback       = mic_callback;
 	config.pUserData          = nullptr;
-	config.aaudio.inputPreset = (ma_aaudio_input_preset)input_preset;
+	config.aaudio.inputPreset     = (ma_aaudio_input_preset)input_preset;
+	config.opensl.recordingPreset = (ma_opensl_recording_preset)input_preset;
 	ma_result result = ma_device_init(&au_context, &config, &au_mic_device);
 	if (result != MA_SUCCESS) {
 		log_warnf("Mic start failed, '%s'", ma_result_description(result));

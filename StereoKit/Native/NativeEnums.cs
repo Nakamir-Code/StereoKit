@@ -1079,6 +1079,37 @@ namespace StereoKit
 		Ignore,
 	}
 
+	/// <summary>Describes the input preset hint for microphone recording. These
+	/// presets tell the audio system how the microphone input should be
+	/// processed. Support varies by platform.</summary>
+	public enum MicInputPreset {
+		/// <summary>The default input preset, no specific processing is
+		/// requested.</summary>
+		Default      = 0,
+		/// <summary>A general purpose input preset with no specific tuning.</summary>
+		Generic,
+		/// <summary>Tuned for recording video with audio. Typically applies a
+		/// wider frequency range capture with some background noise
+		/// tolerance.</summary>
+		Camcorder,
+		/// <summary>Tuned for speech and voice recognition. Applies noise
+		/// suppression and gain control optimized for recognizing spoken
+		/// words.</summary>
+		VoiceRecognition,
+		/// <summary>Tuned for real-time voice communication such as VoIP. Applies
+		/// echo cancellation, noise suppression, and gain control for
+		/// two-way conversation.</summary>
+		VoiceCommunication,
+		/// <summary>Requests raw, unprocessed audio with minimal signal
+		/// processing. Useful when the application wants to apply its own
+		/// audio processing, or when recording for analysis.</summary>
+		Unprocessed,
+		/// <summary>Tuned for real-time voice performance such as karaoke or live
+		/// singing. Minimizes latency while keeping the voice sounding
+		/// natural.</summary>
+		VoicePerformance,
+	}
+
 	/// <summary>When opening the Platform.FilePicker, this enum describes
 	/// how the picker should look and behave.</summary>
 	public enum PickerMode {
@@ -1185,12 +1216,12 @@ namespace StereoKit
 		/// source. This provides aim, pinch, and poke interactors for hands, and
 		/// aim rays for controllers.</summary>
 		All,
-		/// <summary>Always use the hand interactors, using simulated hands when
+		/// <summary>Always use the default hand interactors, using simulated hands when
 		/// articulated hand tracking is not available.</summary>
 		Hands,
-		/// <summary>Always use the controller interactors.</summary>
+		/// <summary>Always use the default controller interactors.</summary>
 		Controllers,
-		/// <summary>Always use the mouse interactor.</summary>
+		/// <summary>Always use the default mouse interactor.</summary>
 		Mouse,
 	}
 

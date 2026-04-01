@@ -3,6 +3,7 @@
 // Copyright (c) 2019-2023 Nick Klingensmith
 // Copyright (c) 2023 Qualcomm Technologies, Inc.
 
+using System;
 using System.Collections.Generic;
 using StereoKit;
 
@@ -18,7 +19,7 @@ class DemoRecordMic : ITest
 	/// and use that to create a sound for playback.
 	///
 	/// ![Audio recording window]({{site.screen_url}}/RecordAudioSnippet.jpg)
-	int         inputPreset;
+	MicInputPreset inputPreset;
 	Sound       recordedSound   = null;
 	List<float> recordedData    = new List<float>();
 	float[]     sampleBuffer    = null;
@@ -117,18 +118,13 @@ class DemoRecordMic : ITest
 			}
 		}
 
-#if ANDROID
 		UI.HSeparator();
 		UI.Label("Input Preset");
-		// More info about each preset can be found below - note that miniaudio supports all non-system presets.
-		// https://developer.android.com/reference/android/media/MediaRecorder.AudioSource
-		string[] presetNames = ["Default", "Generic", "Camcorder", "Voice Recognition", "Voice Communication", "Unprocessed", "Voice Performance"];
-		for (int i = 0; i < presetNames.Length; i++)
+		foreach (MicInputPreset preset in Enum.GetValues<MicInputPreset>())
 		{
-			if (UI.Radio(presetNames[i], inputPreset == i, size))
-				inputPreset = i;
+			if (UI.Radio(preset.ToString(), inputPreset == preset, size))
+				inputPreset = preset;
 		}
-#endif
 
 		UI.WindowEnd();
 	}
