@@ -646,6 +646,11 @@ else()
   set_property(TARGET StereoKitC PROPERTY CXX_STANDARD_REQUIRED ON)
 endif()
 
+if (MSVC)
+  set_source_files_properties(StereoKitC/libraries/isac_spatial_sound.cpp
+    PROPERTIES COMPILE_OPTIONS "/std:c++20")
+endif()
+
 skshaderc_compile_headers(StereoKitC
   ${CMAKE_BINARY_DIR}/shaders/
   "-e -O3 -f -z ${SK_SHADER_SVSL} ${SK_SHADER_VERBOSITY} -i ${CMAKE_CURRENT_SOURCE_DIR}/tools/include"
