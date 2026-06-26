@@ -12,6 +12,7 @@
 #include "ext_management.h"
 #include "_registration.h"
 
+#include "android_anchors.h"
 #include "android_depth_texture.h"
 #include "composition_depth.h"
 #include "debug_utils.h"
@@ -62,6 +63,7 @@ bool ext_registration() {
 	xr_ext_msft_hand_mesh_register();
 	xr_ext_msft_scene_understanding_register();
 	xr_ext_msft_spatial_anchors_register();
+	xr_ext_android_spatial_anchors_register();
 	xr_ext_fb_colorspace_register();
 	xr_ext_msft_observer_register();
 	xr_ext_composition_depth_register();
