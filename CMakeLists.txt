@@ -578,6 +578,8 @@ target_sources(StereoKitC PRIVATE
   StereoKitC/xr_backends/extensions/oculus_audio.cpp
   StereoKitC/xr_backends/extensions/msft_anchors.h
   StereoKitC/xr_backends/extensions/msft_anchors.cpp
+  StereoKitC/xr_backends/extensions/android_anchors.h
+  StereoKitC/xr_backends/extensions/android_anchors.cpp
   StereoKitC/xr_backends/extensions/msft_bridge.h
   StereoKitC/xr_backends/extensions/msft_bridge.cpp
   StereoKitC/xr_backends/extensions/msft_observer.h
