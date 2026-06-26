@@ -524,6 +524,8 @@ target_sources(StereoKitC PRIVATE
 
 # OpenXR extensions
 target_sources(StereoKitC PRIVATE
+  StereoKitC/xr_backends/extensions/android_depth_texture.h
+  StereoKitC/xr_backends/extensions/android_depth_texture.cpp
   StereoKitC/xr_backends/extensions/composition_depth.h
   StereoKitC/xr_backends/extensions/composition_depth.cpp
   StereoKitC/xr_backends/extensions/view_config_views_change.h
