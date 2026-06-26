@@ -514,6 +514,8 @@ set(SK_SRC_XR_BACKENDS
   StereoKitC/xr_backends/anchor_stage.cpp )
 
 set(SK_SRC_XR_EXTS
+  StereoKitC/xr_backends/extensions/android_depth_texture.h
+  StereoKitC/xr_backends/extensions/android_depth_texture.cpp
   StereoKitC/xr_backends/extensions/composition_depth.h
   StereoKitC/xr_backends/extensions/composition_depth.cpp
   StereoKitC/xr_backends/extensions/view_config_views_change.h
@@ -629,6 +631,11 @@ elseif (MSVC)
 else()
   set_property(TARGET StereoKitC PROPERTY CXX_STANDARD 17)
   set_property(TARGET StereoKitC PROPERTY CXX_STANDARD_REQUIRED ON)
+endif()
+
+if (MSVC)
+  set_source_files_properties(StereoKitC/libraries/isac_spatial_sound.cpp
+    PROPERTIES COMPILE_OPTIONS "/std:c++20")
 endif()
 
 skshaderc_compile_headers(StereoKitC
@@ -877,6 +884,8 @@ if (SK_BUILD_TESTS)
 
   target_sources( StereoKitCTest PRIVATE
     Examples/StereoKitCTest/main.cpp
+    Examples/StereoKitCTest/log_window.h
+    Examples/StereoKitCTest/log_window.cpp
     Examples/StereoKitCTest/demo_envmap.h
     Examples/StereoKitCTest/demo_envmap.cpp
     Examples/StereoKitCTest/demo_shadows.h

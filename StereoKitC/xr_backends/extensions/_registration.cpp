@@ -13,6 +13,7 @@
 #include "_registration.h"
 
 #include "android_anchors.h"
+#include "android_depth_texture.h"
 #include "composition_depth.h"
 #include "debug_utils.h"
 #include "meta_environment_depth.h"
@@ -68,6 +69,7 @@ bool ext_registration() {
 	xr_ext_composition_depth_register();
 	xr_ext_view_config_views_change_register();
 	xr_ext_meta_environment_depth_register();
+	xr_ext_android_depth_texture_register();
 	xr_ext_overlay_register();
 	xr_ext_oculus_audio_register();
 	xr_ext_msft_bridge_register();

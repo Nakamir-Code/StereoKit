@@ -655,7 +655,12 @@ typedef enum log_ {
   the primary display. See `Renderer.LayerFilter` for configuring what
   the primary display renders.
   
-  Render layers can also be mixed and matched like bit-flags!*/
+  Render layers can also be mixed and matched like bit-flags!
+
+  Note that while this enum is 32 bits wide, render layers are stored
+  internally in 16 bits when items are queued for drawing. Only the low
+  16 bits are usable as layers, so any custom flags above bit 15 will be
+  silently truncated.*/
 typedef enum render_layer_ {
 	/*The default render layer. All Draw use this layer unless
 	  otherwise specified.*/
@@ -689,6 +694,10 @@ typedef enum render_layer_ {
 	  perspective. By default, this is enabled for renders that
 	  are from a 3rd person viewpoint.*/
 	render_layer_third_person     = 1 << 12,
+	/*The default layer for StereoKit's UI. Mesh and model content
+	  drawn by the UI system uses this layer, see `UI.RenderLayer`
+	  to change it.*/
+	render_layer_ui               = 1 << 13,
 	/*This is a flag that specifies all possible layers. If you
 	  want to render all layers, then this is the layer filter
 	  you would use. This is the default for render filtering.*/
@@ -1001,6 +1010,17 @@ typedef enum permission_type_ {
 	  This maps to android.permission.SCENE_UNDERSTANDING_COARSE on Android XR,
 	  but varies per-runtime.*/
 	permission_type_scene,
+	/*For access to fine-grained geometry of the user's space, such as
+	  environment depth textures. This is typically an interactive permission
+	  that the user will need to explicitly approve.
+
+	  This maps to android.permission.SCENE_UNDERSTANDING_FINE on Android XR,
+	  but varies per-runtime. On runtimes where coarse and fine are distinct
+	  permissions (such as Android XR), granting fine does not grant coarse, so
+	  request both if you need coarse scene data and fine depth. Where a runtime
+	  backs both with a single underlying permission, requesting fine alone covers
+	  coarse as well.*/
+	permission_type_scene_fine,
 	/*This enum is for tracking the number of value in this enum.*/
 	permission_type_max,
 } permission_type_;
@@ -2015,6 +2035,8 @@ SK_API void          text_style_set_layout_height   (text_style_t style, float h
 SK_API float         text_style_get_total_height    (text_style_t style);
 SK_API void          text_style_set_total_height    (text_style_t style, float height_meters);
 SK_API material_t    text_style_get_material        (text_style_t style);
+SK_API render_layer_ text_style_get_render_layer    (text_style_t style);
+SK_API void          text_style_set_render_layer    (text_style_t style, render_layer_ layer);
 SK_API float         text_style_get_ascender        (text_style_t style);
 SK_API float         text_style_get_descender       (text_style_t style);
 SK_API float         text_style_get_cap_height      (text_style_t style);
@@ -2141,7 +2163,7 @@ SK_API float       sprite_get_aspect (sprite_t sprite);
 SK_API int32_t     sprite_get_width  (sprite_t sprite);
 SK_API int32_t     sprite_get_height (sprite_t sprite);
 SK_API vec2        sprite_get_dimensions_normalized(sprite_t sprite);
-SK_API void        sprite_draw       (sprite_t sprite, matrix transform, pivot_ pivot_position, color32 color sk_default({255,255,255,255}));
+SK_API void        sprite_draw       (sprite_t sprite, matrix transform, pivot_ pivot_position, color32 color sk_default({255,255,255,255}), render_layer_ layer sk_default(render_layer_0));
 
 ///////////////////////////////////////////
 
@@ -3334,6 +3356,36 @@ typedef struct sensor_depth_view_t {
 	fov_info_t fov;
 } sensor_depth_view_t;
 
+/*Describes how the values in a sensor depth buffer should be
+  interpreted, so consumers can read them without guessing per
+  backend.*/
+typedef enum sensor_depth_format_ {
+	/*16-bit normalized device coordinate depth (D16_UNORM), un-projected
+	  to meters using the frame's near_z/far_z.*/
+	sensor_depth_format_ndc_d16    = 0,
+	/*32-bit float depth in metric meters, read directly. A value of 0 is
+	  an invalid/empty pixel and infinity is depth known to be far away.*/
+	sensor_depth_format_meters_r32 = 1,
+} sensor_depth_format_;
+
+/*The kinds of depth images a backend may provide for a single frame. Not every
+  image is present each frame; a frame reports which it actually contains.
+  Confidence images are provided as CPU data only, while the primary depth image
+  is also available as a GPU texture.*/
+typedef enum sensor_depth_image_ {
+	/*Smooth, temporally filtered depth. The default when a backend offers a
+	  raw/smooth split, or the only image when it doesn't.*/
+	sensor_depth_image_smooth_depth      = 0,
+	/*Raw, unfiltered depth.*/
+	sensor_depth_image_raw_depth         = 1,
+	/*Confidence for the smooth depth: a uint8 whose range and direction are
+	  runtime-defined; for relative use only.*/
+	sensor_depth_image_smooth_confidence = 2,
+	/*Confidence for the raw depth: a uint8 whose range and direction are
+	  runtime-defined; for relative use only.*/
+	sensor_depth_image_raw_confidence    = 3,
+} sensor_depth_image_;
+
 /*Per-frame metadata for sensor depth. Contains timestamps, dimensions,
   near/far planes, and per-eye camera metadata.*/
 typedef struct sensor_depth_frame_t {
@@ -3353,6 +3405,12 @@ typedef struct sensor_depth_frame_t {
 	float                    far_z;
 	/*Per-eye depth camera metadata. Index 0 is left, index 1 is right.*/
 	sensor_depth_view_t      views[2];
+	/*How the depth buffer values should be interpreted.*/
+	sensor_depth_format_     depth_format;
+	/*Number of valid views: 1 mono, 2 stereo (views[0]=left, [1]=right).*/
+	uint32_t                 view_count;
+	/*Bitmask of (1 << sensor_depth_image_) present this frame.*/
+	uint32_t                 available_images;
 } sensor_depth_frame_t;
 
 /*Capabilities for configuring the sensor depth system. These control
@@ -3364,8 +3422,26 @@ typedef enum sensor_depth_caps_ {
 	/*Enable hand removal filtering on depth data, removing hands from
 	  the depth image.*/
 	sensor_depth_caps_hand_removal  = 1 << 0,
+	/*Request the raw, unfiltered depth image, where the backend provides one. If
+	  neither raw nor smooth is requested, the smooth depth is provided by default.*/
+	sensor_depth_caps_raw_depth     = 1 << 1,
+	/*Request the smooth depth image, so raw and smooth can be read from the
+	  same frame where supported.*/
+	sensor_depth_caps_smooth_depth  = 1 << 2,
+	/*Also request the confidence image(s) for the requested depth image(s).*/
+	sensor_depth_caps_confidence    = 1 << 3,
 } sensor_depth_caps_;
 SK_MakeFlag(sensor_depth_caps_);
+
+/*A depth image resolution in pixels per eye. width and height are tracked
+  separately so non-square resolutions are representable; today's backends
+  advertise square sizes (equal width and height).*/
+typedef struct sensor_depth_resolution_t {
+	/*Width of the depth image, in pixels per eye.*/
+	int32_t width;
+	/*Height of the depth image, in pixels per eye.*/
+	int32_t height;
+} sensor_depth_resolution_t;
 
 /*Is sensor depth available on the current device and backend?*/
 SK_API bool32_t              sensor_depth_available            (void);
@@ -3375,9 +3451,10 @@ SK_API bool32_t              sensor_depth_running              (void);
 /*Returns a bitmask of sensor_depth_caps_ indicating which optional
   features are supported on the current platform and backend.*/
 SK_API sensor_depth_caps_   sensor_depth_get_capabilities     (void);
-/*Starts the sensor depth provider with the given caps. Unsupported
-  caps for the current platform are silently ignored.*/
-SK_API bool32_t              sensor_depth_start                (sensor_depth_caps_ flags sk_default(sensor_depth_caps_none));
+/*Starts the sensor depth provider with the given caps and preferred
+  resolution (pixels per eye; {0,0} = the runtime's highest, see
+  sensor_depth_get_resolutions). Unsupported caps are silently ignored.*/
+SK_API bool32_t              sensor_depth_start                (sensor_depth_caps_ flags sk_default(sensor_depth_caps_none), sensor_depth_resolution_t resolution sk_default({}));
 /*Stops the sensor depth provider and releases resources.*/
 SK_API void                  sensor_depth_stop                 (void);
 /*Updates the active caps while the sensor is running. Can enable or
@@ -3392,13 +3469,20 @@ SK_API tex_t                 sensor_depth_get_texture          (void);
 /*Retrieves the latest per-frame depth metadata. Returns false if no
   frame is available yet.*/
 SK_API bool32_t              sensor_depth_try_get_latest_frame (sensor_depth_frame_t* out_frame);
-/*Retrieves the latest CPU-accessible depth data with matching
-  metadata. The readback pipeline starts automatically on the first
-  call and runs asynchronously, so the first few calls may return
-  false. The returned data may be 1-2 frames behind the GPU texture.
-  If out_data is null, only out_data_size is written, so the caller
-  can query the size before allocating.*/
-SK_API bool32_t              sensor_depth_try_get_latest_data  (sensor_depth_frame_t* out_frame, void* out_data, size_t* out_data_size, int32_t view_index sk_default(-1));
+/*Retrieves the latest CPU-accessible depth data for a specific image (raw/smooth
+  depth or their confidence; see sensor_depth_image_ and available_images), with
+  matching metadata. Depth is float (meters or ndc per depth_format); confidence
+  is uint8. The readback pipeline starts automatically on the first call and runs
+  asynchronously, so the first few calls may return false, and the data may be
+  1-2 frames behind the GPU texture. If out_data is null, only out_data_size is
+  written, so the caller can query the size before allocating. Returns false if
+  the image is unavailable or no frame is ready.*/
+SK_API bool32_t              sensor_depth_try_get_latest_data  (sensor_depth_frame_t* out_frame, void* out_data, size_t* out_data_size, int32_t view_index sk_default(-1), sensor_depth_image_ image sk_default(sensor_depth_image_smooth_depth));
+/*Provides the depth resolutions (pixels per eye) the backend advertises,
+  highest first, as a system-owned array; do not free it. out_count receives the
+  number of entries. Both are null/zero where resolution is not selectable.
+  Choose one with sensor_depth_start's resolution argument.*/
+SK_API void                  sensor_depth_get_resolutions      (sk_ref_arr(sensor_depth_resolution_t) out_arr_resolutions, sk_ref(int32_t) out_count);
 
 ///////////////////////////////////////////
 

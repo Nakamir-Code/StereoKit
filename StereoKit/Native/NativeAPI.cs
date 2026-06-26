@@ -492,6 +492,8 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern float        text_style_get_total_height(TextStyle style);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         text_style_set_total_height(TextStyle style, float height_meters);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern IntPtr       text_style_get_material(TextStyle style);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern RenderLayer  text_style_get_render_layer(TextStyle style);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         text_style_set_render_layer(TextStyle style, RenderLayer layer);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern float        text_style_get_ascender(TextStyle style);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern float        text_style_get_descender(TextStyle style);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern float        text_style_get_cap_height(TextStyle style);
@@ -591,7 +593,7 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          sprite_get_width(IntPtr sprite);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern int          sprite_get_height(IntPtr sprite);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern Vec2         sprite_get_dimensions_normalized(IntPtr sprite);
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         sprite_draw(IntPtr sprite, Matrix transform, Pivot pivot_position, Color32 color);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         sprite_draw(IntPtr sprite, Matrix transform, Pivot pivot_position, Color32 color, RenderLayer layer);
 
 		///////////////////////////////////////////
 
@@ -904,7 +906,7 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_running();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern SensorDepthCaps sensor_depth_get_capabilities();
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_start(SensorDepthCaps flags);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_start(SensorDepthCaps flags, SensorDepthResolution resolution);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         sensor_depth_stop();
 		[return: MarshalAs(UnmanagedType.Bool)]
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_set_capabilities(SensorDepthCaps flags);
@@ -912,7 +914,8 @@ namespace StereoKit
 		[return: MarshalAs(UnmanagedType.Bool)]
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_try_get_latest_frame(out SensorDepthFrame out_frame);
 		[return: MarshalAs(UnmanagedType.Bool)]
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_try_get_latest_data(out SensorDepthFrame out_frame, IntPtr out_data, out UIntPtr out_data_size, int view_index);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         sensor_depth_try_get_latest_data(out SensorDepthFrame out_frame, IntPtr out_data, out UIntPtr out_data_size, int view_index, SensorDepthImage image);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         sensor_depth_get_resolutions(out IntPtr out_arr_resolutions, out int out_count);
 
 		///////////////////////////////////////////
 
@@ -1015,6 +1018,8 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern bool         ui_far_interact_enabled();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern UIMove       ui_system_get_move_type();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_system_set_move_type(UIMove move_type);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern RenderLayer  ui_get_render_layer();
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_set_render_layer(RenderLayer layer);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_settings(UISettings settings);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern UISettings   ui_get_settings();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern float        ui_get_margin();
@@ -1076,8 +1081,7 @@ namespace StereoKit
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_nextline();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_sameline();
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern float        ui_line_height();
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_button_behavior(Vec3 window_relative_pos, Vec2 size, IdHash id, out float out_finger_offset, out BtnState out_button_state, out BtnState out_focus_state, IntPtr out_opt_interactor);
-		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_button_behavior_depth(Vec3 window_relative_pos, Vec2 size, IdHash id, float button_depth, float button_activation_depth, out float out_finger_offset, out BtnState out_button_state, out BtnState out_focus_state, IntPtr out_opt_interactor);
+		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_button_behavior(Vec3 window_relative_pos, Vec2 size, IdHash id, float button_depth, float button_activation_depth, UIBtnFlag flags, out float out_finger_offset, out BtnState out_button_state, out BtnState out_focus_state, IntPtr out_opt_interactor);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern void         ui_slider_behavior(Vec3 window_relative_pos, Vec2 size, IdHash id, ref Vec2 ref_value, Vec2 min, Vec2 max, Vec2 button_size_visual, Vec2 button_size_interact, UIConfirm confirm_method, out UISliderData out_slider_data);
 		[DllImport(dll, CharSet = cSet, CallingConvention = call)] public static extern BtnState     ui_volume_at([MarshalAs(UnmanagedType.LPUTF8Str)] string id, Bounds bounds, UIConfirm interact_type, IntPtr out_opt_interactor, IntPtr out_opt_focus_state);
 		[DllImport(dll, CharSet = CharSet.Unicode, CallingConvention = call)] public static extern BtnState     ui_volume_at_16([MarshalAs(UnmanagedType.LPWStr)] string id, Bounds bounds, UIConfirm interact_type, IntPtr out_opt_interactor, IntPtr out_opt_focus_state);
