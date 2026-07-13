@@ -326,6 +326,15 @@ namespace StereoKit
 		public static void Blit(Tex toRendertarget, Material material)
 			=> NativeAPI.render_blit(toRendertarget._inst, material._inst);
 
+		/// <summary>Retrieves the native graphics device handles backing the
+		/// renderer: the VkDevice and the VkInstance. Useful for interop that
+		/// needs to allocate resources on the same device StereoKit renders
+		/// with.</summary>
+		/// <param name="device">The renderer's VkDevice.</param>
+		/// <param name="context">The renderer's VkInstance.</param>
+		public static void GetDevice(out IntPtr device, out IntPtr context)
+			=> NativeAPI.render_get_device(out device, out context);
+
 		/// <summary>Schedules a screenshot for the end of the frame! The view
 		/// will be rendered from the given position at the given point, with a
 		/// resolution the same size as the screen's surface. It'll be saved as

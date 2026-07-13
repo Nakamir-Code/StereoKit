@@ -1172,10 +1172,10 @@ vec3 render_unproject_pt(vec3 normalized_screen_pt) {
 
 ///////////////////////////////////////////
 
-void render_get_device(void **device, void **context) {
+void render_get_device(void **out_device, void **out_context) {
 	// sk_renderer uses Vulkan
-	*device  = skr_get_vk_device();
-	*context = skr_get_vk_instance();
+	*out_device  = skr_get_vk_device();
+	*out_context = skr_get_vk_instance();
 }
 
 ///////////////////////////////////////////
