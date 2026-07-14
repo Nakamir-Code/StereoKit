@@ -77,7 +77,7 @@
 			<SKSDKCacheFile Condition="'$(SKSDKCacheFile)'==''"   >$(SKSDKFolder)\bin\intermediate\$(SKSDKBuildOS)_$(SKSDKBuildModePreset)_$(Configuration)$(SKSDKPresetFast)\CMakeCache.txt</SKSDKCacheFile>
 
 			<SKBuildCommand                                         >cd "$(SKSDKFolder)"</SKBuildCommand>
-			<SKBuildCommand Condition="!Exists('$(SKSDKCacheFile)')">$(SKBuildCommand) &amp;&amp; cmake --preset $(SKSDKPreset) -DSK_BUILD_TESTS=OFF</SKBuildCommand>
+			<SKBuildCommand Condition="!Exists('$(SKSDKCacheFile)')">$(SKBuildCommand) &amp;&amp; cmake --preset $(SKSDKPreset) -DSK_BUILD_TESTS=OFF $(SKConfigureArgs)</SKBuildCommand>
 			<SKBuildCommand                                         >$(SKBuildCommand) &amp;&amp; cmake --build --preset $(SKSDKPreset)</SKBuildCommand>
 		</PropertyGroup>
 
