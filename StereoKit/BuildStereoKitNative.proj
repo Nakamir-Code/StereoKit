@@ -4,7 +4,7 @@
 
 	<Target Name="StereoKit_BuildNative">
 		<Message Condition="!Exists('$(SKSDKCacheFile)')" Importance="high" Text="[StereoKit SDK] Configuring StereoKitC"/>
-		<Exec Condition="!Exists('$(SKSDKCacheFile)')" WorkingDirectory="$(SKSDKFolder)" Command="cmake --preset $(SKSDKPreset) -DSK_BUILD_TESTS=OFF" />
+		<Exec Condition="!Exists('$(SKSDKCacheFile)')" WorkingDirectory="$(SKSDKFolder)" Command="cmake --preset $(SKSDKPreset) -DSK_BUILD_TESTS=OFF $(SKConfigureArgs)" />
 		<Exec WorkingDirectory="$(SKSDKFolder)" Command="cmake --build --preset $(SKSDKPreset)" />
 	</Target>
 
