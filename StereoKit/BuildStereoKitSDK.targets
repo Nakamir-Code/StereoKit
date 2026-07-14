@@ -79,7 +79,7 @@
 
 		<MSBuild Projects="$(MSBuildThisFileDirectory)BuildStereoKitNative.proj"
 		         Targets="StereoKit_BuildNative"
-		         Properties="SKSDKFolder=$(SKSDKFolder);SKSDKPreset=$(SKSDKPreset);SKSDKCacheFile=$(SKSDKCacheFile)"
+		         Properties="SKSDKFolder=$(SKSDKFolder);SKSDKPreset=$(SKSDKPreset);SKSDKCacheFile=$(SKSDKCacheFile);SKConfigureArgs=$(SKConfigureArgs)"
 		         RemoveProperties="TargetFramework;RuntimeIdentifier;Platform;Configuration;DesignTimeBuild" />
 	</Target>
 	
