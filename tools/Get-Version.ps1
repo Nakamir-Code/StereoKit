@@ -15,12 +15,15 @@ if ($pre -ne 0) {
 }
 
 # A distribution suffix lives only in the csproj, and extends this version.
+$suffix = ''
 if ((Get-Content -Path "$PSScriptRoot\..\StereoKit\StereoKit.csproj" -Raw -ErrorAction SilentlyContinue) -match "<Version>(?<ver>$([regex]::Escape($str))[-.][^<]+)</Version>") {
-    $str = $Matches.ver
+    $suffix = $Matches.ver.Substring($str.Length + 1)
+    $str    = $Matches.ver
 }
 
 return @{
     'str' = $str; 
+    'suffix' = $suffix;
     'major' = $major;
     'minor' = $minor;
     'patch' = $patch; 

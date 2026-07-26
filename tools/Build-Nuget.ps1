@@ -62,7 +62,7 @@ Push-Location -Path (Join-Path $PSScriptRoot "..")
 
 $version = & (Join-Path $PSScriptRoot "Get-Version.ps1")
 # Ensure all versions match the source of truth
-& (Join-Path $PSScriptRoot "Set-Version.ps1") -major $version.major -minor $version.minor -patch $version.patch -pre $version.pre
+& (Join-Path $PSScriptRoot "Set-Version.ps1") -major $version.major -minor $version.minor -patch $version.patch -pre $version.pre -suffix $version.suffix
 
 # Notify of build, and output the version
 Write-Host @"
