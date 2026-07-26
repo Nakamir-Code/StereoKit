@@ -103,6 +103,7 @@ on:
 permissions:
   contents: write
   actions: write
+  packages: write
 
 jobs:
 
@@ -359,7 +360,7 @@ jobs:
     - name: Build Package and Upload
       if: inputs.upload == true
       shell: pwsh
-      run: ./tools/Build-Nuget.ps1 -nobuild -notest -upload -key ${{ secrets.NUGET_KEY }} -source '${{ inputs.nugetSource }}'
+      run: ./tools/Build-Nuget.ps1 -nobuild -notest -upload -key ${{ secrets.NUGET_KEY || secrets.GITHUB_TOKEN }} -source '${{ inputs.nugetSource }}'
 
     - name: Build Package without Upload
       if: inputs.upload == false
