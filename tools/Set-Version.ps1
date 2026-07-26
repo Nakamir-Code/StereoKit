@@ -2,13 +2,18 @@ param(
     [int]$major,
     [int]$minor,
     [int]$patch,
-    [int]$pre = 0
+    [int]$pre = 0,
+    [string]$suffix = ''
 )
 
 $version     = "$major.$minor.$patch"
 $versionFull = $version
 if ($pre -ne 0) {
     $versionFull = "$version-preview.$pre"
+}
+# Distribution suffix for forks, e.g. 'nakamir.0'.
+if ($suffix -ne '') {
+    $versionFull = "$versionFull$(if ($pre -ne 0) { '.' } else { '-' })$suffix"
 }
 
 # This file is the source of truth for the version. It may even be the source
