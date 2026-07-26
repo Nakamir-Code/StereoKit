@@ -14,16 +14,9 @@ if ($pre -ne 0) {
     $str = "$str-preview.$pre"
 }
 
-$csprojPath = "$PSScriptRoot\..\StereoKit\StereoKit.csproj"
-if (Test-Path $csprojPath) {
-    $csprojData = Get-Content -Path $csprojPath -Raw
-    if ($csprojData -match '<Version>(?<ver>[^<]+)</Version>') {
-        $full = $Matches.ver.Trim()
-        if (($full.Length -gt $str.Length) -and $full.StartsWith($str) -and
-            (@('.', '-') -contains $full.Substring($str.Length, 1))) {
-            $str = $full
-        }
-    }
+# A distribution suffix lives only in the csproj, and extends this version.
+if ((Get-Content -Path "$PSScriptRoot\..\StereoKit\StereoKit.csproj" -Raw -ErrorAction SilentlyContinue) -match "<Version>(?<ver>$([regex]::Escape($str))[-.][^<]+)</Version>") {
+    $str = $Matches.ver
 }
 
 return @{

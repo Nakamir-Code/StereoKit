@@ -13,8 +13,7 @@ if ($pre -ne 0) {
 }
 # Distribution suffix for forks, e.g. 'nakamir.0'.
 if ($suffix -ne '') {
-    $separator   = if ($pre -ne 0) { '.' } else { '-' }
-    $versionFull = "$versionFull$separator$suffix"
+    $versionFull = "$versionFull$(if ($pre -ne 0) { '.' } else { '-' })$suffix"
 }
 
 # This file is the source of truth for the version. It may even be the source

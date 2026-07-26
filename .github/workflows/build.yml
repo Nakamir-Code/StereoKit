@@ -91,16 +91,6 @@ on:
         type: string
         required: false
         default: 'preview'
-      suffix:
-        description: 'Version suffix identifying this distribution, e.g. nakamir.0'
-        type: string
-        required: false
-        default: ''
-      skRendererRef:
-        description: 'sk_renderer ref to build against. Empty uses the CPM-pinned release.'
-        type: string
-        required: false
-        default: ''
       nugetSource:
         description: 'NuGet feed to push to'
         type: string
@@ -151,7 +141,7 @@ jobs:
 
     - name: Set Version
       shell: pwsh
-      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}} -suffix '${{inputs.suffix}}'
+      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}}
 
     - name: Build Native Win32 x64
       run: |
@@ -234,7 +224,7 @@ jobs:
 
     - name: Set Version
       shell: pwsh
-      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}} -suffix '${{inputs.suffix}}'
+      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}}
   
     - name: Build Native Linux x64
       run: |
@@ -314,7 +304,7 @@ jobs:
 
     - name: Set Version
       shell: pwsh
-      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}} -suffix '${{inputs.suffix}}'
+      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}}
 
     - name: Build Native macOS ARM64
       run: |
