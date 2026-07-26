@@ -3,6 +3,7 @@ param(
     [switch]$noTest = $false,
     [switch]$noBuild = $false,
     [string]$key = '',
+    [string]$source = 'https://api.nuget.org/v3/index.json',
     [string]$saveKey = '',
     [switch]$noLinux = $false,
     [switch]$noWin32 = $false,
@@ -220,7 +221,7 @@ if ($upload) {
     if ($key -ne '') {
         $key = $key.Trim()
         $nupkgPath = Join-Path $PSScriptRoot ".." "bin" "StereoKit.$($version.str).nupkg"
-        & dotnet nuget push $nupkgPath -k $key -s https://api.nuget.org/v3/index.json
+        & dotnet nuget push $nupkgPath -k $key -s $source
     } else {
         Write-Host 'No key, cancelling upload'
     }

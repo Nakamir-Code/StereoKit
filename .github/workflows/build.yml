@@ -38,6 +38,21 @@ on:
         type: string
         required: false
         default: 'preview'
+      suffix:
+        description: 'Version suffix identifying this distribution, e.g. nakamir.0'
+        type: string
+        required: false
+        default: ''
+      skRendererRef:
+        description: 'sk_renderer ref to build against. Empty uses the CPM-pinned release.'
+        type: string
+        required: false
+        default: ''
+      nugetSource:
+        description: 'NuGet feed to push to'
+        type: string
+        required: false
+        default: 'https://api.nuget.org/v3/index.json'
   workflow_call:
     inputs:
       branch:
@@ -76,6 +91,21 @@ on:
         type: string
         required: false
         default: 'preview'
+      suffix:
+        description: 'Version suffix identifying this distribution, e.g. nakamir.0'
+        type: string
+        required: false
+        default: ''
+      skRendererRef:
+        description: 'sk_renderer ref to build against. Empty uses the CPM-pinned release.'
+        type: string
+        required: false
+        default: ''
+      nugetSource:
+        description: 'NuGet feed to push to'
+        type: string
+        required: false
+        default: 'https://api.nuget.org/v3/index.json'
     secrets:
       NUGET_KEY:
         required: true
@@ -99,6 +129,19 @@ jobs:
         ref: ${{ inputs.branch }}
     - uses: lukka/get-cmake@v4.3.3
 
+    - name: Check out sk_renderer
+      if: inputs.skRendererRef != ''
+      uses: actions/checkout@v4
+      with:
+        repository: Nakamir-Code/sk_renderer
+        ref: ${{ inputs.skRendererRef }}
+        path: .sk_renderer
+
+    - name: Move sk_renderer beside the repo
+      if: inputs.skRendererRef != ''
+      shell: pwsh
+      run: Move-Item .sk_renderer (Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) 'sk_renderer')
+
     - name: Get Cache
       uses: actions/cache@v4
       with:
@@ -108,7 +151,7 @@ jobs:
 
     - name: Set Version
       shell: pwsh
-      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}}
+      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}} -suffix '${{inputs.suffix}}'
 
     - name: Build Native Win32 x64
       run: |
@@ -144,6 +187,19 @@ jobs:
         ref: ${{ inputs.branch }}
     - uses: lukka/get-cmake@v4.3.3
 
+    - name: Check out sk_renderer
+      if: inputs.skRendererRef != ''
+      uses: actions/checkout@v4
+      with:
+        repository: Nakamir-Code/sk_renderer
+        ref: ${{ inputs.skRendererRef }}
+        path: .sk_renderer
+
+    - name: Move sk_renderer beside the repo
+      if: inputs.skRendererRef != ''
+      shell: pwsh
+      run: Move-Item .sk_renderer (Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) 'sk_renderer')
+
     - name: Get Cache
       uses: actions/cache@v4
       with:
@@ -178,7 +234,7 @@ jobs:
 
     - name: Set Version
       shell: pwsh
-      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}}
+      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}} -suffix '${{inputs.suffix}}'
   
     - name: Build Native Linux x64
       run: |
@@ -236,6 +292,19 @@ jobs:
         ref: ${{ inputs.branch }}
     - uses: lukka/get-cmake@v4.3.3
 
+    - name: Check out sk_renderer
+      if: inputs.skRendererRef != ''
+      uses: actions/checkout@v4
+      with:
+        repository: Nakamir-Code/sk_renderer
+        ref: ${{ inputs.skRendererRef }}
+        path: .sk_renderer
+
+    - name: Move sk_renderer beside the repo
+      if: inputs.skRendererRef != ''
+      shell: pwsh
+      run: Move-Item .sk_renderer (Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) 'sk_renderer')
+
     - name: Get Cache
       uses: actions/cache@v4
       with:
@@ -245,7 +314,7 @@ jobs:
 
     - name: Set Version
       shell: pwsh
-      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}}
+      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}} -suffix '${{inputs.suffix}}'
 
     - name: Build Native macOS ARM64
       run: |
@@ -295,12 +364,12 @@ jobs:
 
     - name: Set Version
       shell: pwsh
-      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}}
+      run: ./tools/Set-Version.ps1 -major ${{inputs.major}} -minor ${{inputs.minor}} -patch ${{inputs.patch}} -pre ${{inputs.pre}} -preName ${{inputs.preName}} -suffix '${{inputs.suffix}}'
 
     - name: Build Package and Upload
       if: inputs.upload == true
       shell: pwsh
-      run: ./tools/Build-Nuget.ps1 -nobuild -notest -upload -key ${{ secrets.NUGET_KEY }}
+      run: ./tools/Build-Nuget.ps1 -nobuild -notest -upload -key ${{ secrets.NUGET_KEY }} -source '${{ inputs.nugetSource }}'
 
     - name: Build Package without Upload
       if: inputs.upload == false

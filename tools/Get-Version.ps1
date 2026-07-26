@@ -14,6 +14,18 @@ if ($pre -ne 0) {
     $str = "$str-preview.$pre"
 }
 
+$csprojPath = "$PSScriptRoot\..\StereoKit\StereoKit.csproj"
+if (Test-Path $csprojPath) {
+    $csprojData = Get-Content -Path $csprojPath -Raw
+    if ($csprojData -match '<Version>(?<ver>[^<]+)</Version>') {
+        $full = $Matches.ver.Trim()
+        if (($full.Length -gt $str.Length) -and $full.StartsWith($str) -and
+            (@('.', '-') -contains $full.Substring($str.Length, 1))) {
+            $str = $full
+        }
+    }
+}
+
 return @{
     'str' = $str; 
     'major' = $major;
